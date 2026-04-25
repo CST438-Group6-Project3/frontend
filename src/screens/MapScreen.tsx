@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { getLocations, LocationResponse } from "../api/locations";
-import WebMap from "../components/map/Map";
+import HiddenGemsMap from "../components/map/Map";
 
 export default function MapScreen() {
     const [locations, setLocations] = useState<LocationResponse[]>([]);
+    const [selectedLocation, setSelectedLocation] =
+        useState<LocationResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -48,8 +50,21 @@ export default function MapScreen() {
 
     return (
         <View style={styles.container}>
-            <WebMap locations={locations} />
+      <HiddenGemsMap
+        locations={locations}
+        onMarkerPress={setSelectedLocation}
+      />
+
+      {selectedLocation && (
+        <View style={styles.previewCard}>
+          <Text style={styles.previewTitle}>{selectedLocation.name}</Text>
+          <Text style={styles.previewText}>{selectedLocation.category}</Text>
+          <Text style={styles.previewText}>
+            Rating: {selectedLocation.avgRating ?? 0}
+          </Text>
         </View>
+      )}
+    </View>
     );
 }
 
@@ -72,20 +87,26 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: "red",
     },
-    heading: {
-        fontSize: 24,
-        fontWeight: "700",
-        marginBottom: 12,
-    },
-    locationCard: {
-        padding: 12,
-        marginBottom: 8,
-        borderWidth: 1,
-        borderColor: "#ddd",
-        borderRadius: 8,
-    },
-    locationName: {
-        fontSize: 18,
-        fontWeight: "600",
-    },
+    previewCard: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 24,
+    backgroundColor: "white",
+    padding: 16,
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+    zIndex: 9999,
+  },
+  previewTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  previewText: {
+    fontSize: 14,
+    marginTop: 4,
+  },
 });

@@ -16,9 +16,10 @@ L.Icon.Default.mergeOptions({
 
 type HiddenGemsMapProps = {
   locations: LocationResponse[];
+  onMarkerPress: (location: LocationResponse) => void;
 };
 
-export default function HiddenGemsMap({ locations }: HiddenGemsMapProps) {
+export default function HiddenGemsMap({ locations, onMarkerPress }: HiddenGemsMapProps) {
   return (
     <div style={{ height: "100vh", width: "100vw" }}>
       <MapContainer
@@ -32,13 +33,12 @@ export default function HiddenGemsMap({ locations }: HiddenGemsMapProps) {
         />
 
         {locations.map((location) => (
-          <Marker key={location.id} position={[location.lat, location.lng]}>
-            <Popup>
-              <strong>{location.name}</strong>
-              <br />
-              {location.category}
-            </Popup>
-          </Marker>
+          <Marker key={location.id}
+            position={[location.lat, location.lng]}
+            eventHandlers={{
+              click: () => onMarkerPress(location),
+            }}
+          />
         ))}
       </MapContainer>
     </div>
