@@ -8,6 +8,7 @@ export type LocationResponse = {
   description?: string;
   category: "study_spot" | "food" | "scenic" | "hangout" | "trail" | "activity" | "other";
   tags?: string[];
+  imageUrls?: string[];
   lat: number;
   lng: number;
   createdById: string;
