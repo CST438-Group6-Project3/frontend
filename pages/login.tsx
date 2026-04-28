@@ -20,7 +20,7 @@ export default function Login() {
     if (!loading && session) {
       navigation.reset({
         index: 0,
-        routes: [{ name: 'Home' as never }],
+        routes: [{ name: 'Map' as never }],
       });
     }
   }, [loading, session, navigation]);
@@ -43,7 +43,7 @@ export default function Login() {
     // successful login then go to Home and clear history
     navigation.reset({
       index: 0,
-      routes: [{ name: 'Home' as never }],
+      routes: [{ name: 'Map' as never }],
     });
   }
 
