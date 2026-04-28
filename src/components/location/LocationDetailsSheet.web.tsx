@@ -40,7 +40,7 @@ export default function LocationDetailsSheet({ location, onClose }: Props) {
         ✕
       </button>
 
-        {mainImageUrl ? (
+      {mainImageUrl ? (
         <img
           src={mainImageUrl}
           alt={location.name}

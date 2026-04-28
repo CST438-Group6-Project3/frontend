@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { getLocations, LocationResponse } from "../api/locations";
 import HiddenGemsMap from "../components/map/Map";
 import LocationDetailsSheet from "../components/location/LocationDetailsSheet";
@@ -35,15 +35,15 @@ export default function MapScreen() {
     }, []);
 
     function handleMarkerPress(location: LocationResponse) {
-    if (detailsLocation) {
-      // If details sheet is open → switch immediately
-      setDetailsLocation(location);
-      setSelectedLocation(null);
-    } else {
-      // Otherwise → show preview
-      setSelectedLocation(location);
+        if (detailsLocation) {
+            // If details sheet is open → switch immediately
+            setDetailsLocation(location);
+            setSelectedLocation(null);
+        } else {
+            // Otherwise → show preview
+            setSelectedLocation(location);
+        }
     }
-  }
 
     if (loading) {
         return (
@@ -70,27 +70,27 @@ export default function MapScreen() {
             />
 
             {selectedLocation && (
-                <View style={styles.previewCard}>
-                    <Text style={styles.closeButton} onPress={() => setSelectedLocation(null)}>
-                        ✕
-                    </Text>
+                <Pressable
+                    style={styles.previewCard}
+                    onPress={() => {
+                        setDetailsLocation(selectedLocation);
+                        setSelectedLocation(null);
+                    }}
+                >
 
-                    <Text style={styles.previewTitle}>{selectedLocation.name}</Text>
-                    <Text style={styles.previewText}>{selectedLocation.category}</Text>
-                    <Text style={styles.previewText}>
-                        Rating: {selectedLocation.avgRating ?? 0}
-                    </Text>
 
-                    <Text
-                        style={styles.detailsButton}
-                        onPress={() => {
-                            setDetailsLocation(selectedLocation)
-                            setSelectedLocation(null);
-                        }}
-                    >
-                        View details
-                    </Text>
-                </View>
+                    <View style={styles.previewContent}>
+                        <View style={styles.previewTextContainer}>
+                            <Text style={styles.previewTitle}>{selectedLocation.name}</Text>
+                            <Text style={styles.previewText}>{selectedLocation.category}</Text>
+                            <Text style={styles.previewText}>
+                                Rating: {selectedLocation.avgRating ?? 0}
+                            </Text>
+                        </View>
+
+                        <Text style={styles.chevron}>›</Text>
+                    </View>
+                </Pressable>
             )}
             <LocationDetailsSheet
                 location={detailsLocation}
@@ -127,13 +127,33 @@ const styles = StyleSheet.create({
         right: 16,
         bottom: 24,
         backgroundColor: "white",
-        padding: 16,
         borderRadius: 16,
+        padding: 16,
+
         shadowColor: "#000",
         shadowOpacity: 0.2,
         shadowRadius: 8,
         elevation: 5,
+
         zIndex: 9999,
+        cursor: "pointer"
+    },
+
+    previewContent: {
+        flexDirection: "row",
+        alignItems: "center", // 👈 key fix
+        justifyContent: "space-between",
+    },
+
+    previewTextContainer: {
+        flex: 1,
+    },
+
+    chevron: {
+        fontSize: 28,
+        fontWeight: "700",
+        color: "#6b7280",
+        marginLeft: 12,
     },
     previewTitle: {
         fontSize: 18,
