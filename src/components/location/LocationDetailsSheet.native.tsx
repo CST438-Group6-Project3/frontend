@@ -1,11 +1,14 @@
 import {
+	Dimensions,
 	Image,
 	Modal,
 	Pressable,
+	ScrollView,
 	StyleSheet,
 	Text,
 	View,
 } from "react-native";
+import { useState } from "react";
 import type { LocationResponse } from "../../api/locations";
 
 type Props = {
@@ -16,7 +19,10 @@ type Props = {
 export default function LocationDetailsSheet({ location, onClose }: Props) {
 	if (!location) return null;
 
-	const mainImageUrl = location.imageUrls?.[0];
+	const imageUrls = location.imageUrls ?? [];
+	const [currentImageIndex, setCurrentImageIndex] = useState(0);
+	const screenWidth = Dimensions.get("window").width;
+	const imageWidth = screenWidth - 48;
 
 	return (
 		<Modal
@@ -25,7 +31,6 @@ export default function LocationDetailsSheet({ location, onClose }: Props) {
 			animationType="slide"
 			onRequestClose={onClose}
 		>
-			{/* <View style={styles.modalRoot}> */}
 			<Pressable style={styles.backdrop} onPress={onClose} />
 
 			<View style={styles.sheet}>
@@ -37,8 +42,34 @@ export default function LocationDetailsSheet({ location, onClose }: Props) {
 					✕
 				</Text>
 
-				{mainImageUrl ? (
-					<Image source={{ uri: mainImageUrl }} style={styles.image} />
+				{imageUrls.length > 0 ? (
+					<View style={styles.imageCarouselContainer}>
+						<ScrollView
+							horizontal
+							pagingEnabled
+							showsHorizontalScrollIndicator={false}
+							onMomentumScrollEnd={(event) => {
+								const index = Math.round(
+									event.nativeEvent.contentOffset.x / imageWidth
+								);
+								setCurrentImageIndex(index);
+							}}
+						>
+							{imageUrls.map((url, index) => (
+								<Image
+									key={`${url}-${index}`}
+									source={{ uri: url }}
+									style={[styles.image, { width: imageWidth }]}
+								/>
+							))}
+						</ScrollView>
+
+						<View style={styles.imageCounter}>
+							<Text style={styles.imageCounterText}>
+								{currentImageIndex + 1}/{imageUrls.length}
+							</Text>
+						</View>
+					</View>
 				) : (
 					<View style={styles.imagePlaceholder}>
 						<Text style={styles.imagePlaceholderText}>No image yet</Text>
@@ -57,7 +88,6 @@ export default function LocationDetailsSheet({ location, onClose }: Props) {
 					Coordinates: {location.lat}, {location.lng}
 				</Text>
 			</View>
-			{/* </View> */}
 		</Modal>
 	);
 }
@@ -101,10 +131,8 @@ const styles = StyleSheet.create({
 		zIndex: 10,
 	},
 	image: {
-		width: "100%",
 		height: 200,
 		borderRadius: 16,
-		marginBottom: 16,
 	},
 	imagePlaceholder: {
 		width: "100%",
@@ -131,5 +159,23 @@ const styles = StyleSheet.create({
 	text: {
 		fontSize: 15,
 		marginBottom: 8,
+	},
+	imageCarouselContainer: {
+		position: "relative",
+		marginBottom: 16,
+	},
+	imageCounter: {
+		position: "absolute",
+		top: 10,
+		right: 10,
+		backgroundColor: "rgba(0,0,0,0.6)",
+		paddingHorizontal: 10,
+		paddingVertical: 4,
+		borderRadius: 999,
+	},
+	imageCounterText: {
+		color: "white",
+		fontSize: 12,
+		fontWeight: "700",
 	},
 });
