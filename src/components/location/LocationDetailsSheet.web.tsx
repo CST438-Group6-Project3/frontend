@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { LocationResponse } from "../../api/locations";
 
 type Props = {
@@ -8,7 +9,9 @@ type Props = {
 export default function LocationDetailsSheet({ location, onClose }: Props) {
   if (!location) return null;
 
-  const mainImageUrl = location.imageUrls?.[0];
+  const imageUrls = location.imageUrls ?? [];
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const mainImageUrl = imageUrls[selectedImageIndex];
 
   return (
     <div
@@ -41,17 +44,50 @@ export default function LocationDetailsSheet({ location, onClose }: Props) {
       </button>
 
       {mainImageUrl ? (
-        <img
-          src={mainImageUrl}
-          alt={location.name}
-          style={{
-            width: "100%",
-            height: 220,
-            objectFit: "cover",
-            borderRadius: 16,
-            marginBottom: 20,
-          }}
-        />
+        <>
+          <img
+            src={mainImageUrl}
+            alt={location.name}
+            style={{
+              width: "100%",
+              height: 220,
+              objectFit: "cover",
+              borderRadius: 16,
+              marginBottom: 12,
+            }}
+          />
+
+          {imageUrls.length > 1 && (
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                overflowX: "auto",
+                marginBottom: 20,
+              }}
+            >
+              {imageUrls.map((url, index) => (
+                <img
+                  key={url}
+                  src={url}
+                  alt={`${location.name} ${index + 1}`}
+                  onClick={() => setSelectedImageIndex(index)}
+                  style={{
+                    width: 64,
+                    height: 64,
+                    objectFit: "cover",
+                    borderRadius: 10,
+                    cursor: "pointer",
+                    border:
+                      selectedImageIndex === index
+                        ? "3px solid #2563eb"
+                        : "2px solid transparent",
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </>
       ) : (
         <div
           style={{
