@@ -1,18 +1,19 @@
-FROM node:22-alpine
+# Build stage
+FROM node:22-alpine AS builder
 
 WORKDIR /app
-
-# Copy package files
 COPY package.json package-lock.json ./
+RUN npm install
 
-# Install dependencies
-RUN npm ci
-
-# Copy source code
 COPY . .
 
-# Expose ports for Expo web and dev server
-EXPOSE 3000 8081
+RUN npx expo export --platform web
 
-# Start Expo web dev server
-CMD ["npm", "run", "web"]
+# Serve stage
+FROM nginx:alpine
+
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
