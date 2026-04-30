@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabaseClient';
 
 export default function Home() {
   const navigation = useNavigation();
-  const { session } = useAuth(); // current auth user
+  const { session, user } = useAuth(); // current auth user and profile
 
   useEffect(() => {
     // only if on web and when user is logged in
@@ -52,7 +52,13 @@ export default function Home() {
       <Text style={styles.title}>Welcome!</Text>
       <Text style={styles.subtitle}>You are logged in.</Text>
 
-      {session && <Text>Email: {session.user.email}</Text>}
+      {user && (
+        <>
+          <Text style={styles.userInfo}>Name: {user.name}</Text>
+          <Text style={styles.userInfo}>Email: {user.email}</Text>
+          <Text style={styles.userInfo}>Role: {user.role}</Text>
+        </>
+      )}
 
       <TouchableOpacity style={styles.button} onPress={handleLogout}>
         <Text style={styles.buttonText}>Log out</Text>
@@ -77,6 +83,11 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     marginBottom: 24,
+  },
+  userInfo: {
+    fontSize: 14,
+    marginBottom: 8,
+    color: '#555',
   },
   button: {
     backgroundColor: '#007bff',
