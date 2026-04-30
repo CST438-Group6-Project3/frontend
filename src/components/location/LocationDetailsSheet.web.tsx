@@ -6,11 +6,20 @@ type Props = {
   onClose: () => void;
 };
 
+/**
+ * Side panel that displays details for a selected location.
+ * Includes a main image, optional image thumbnails, description, and metadata.
+ *
+ * @param props.location - Selected map location (null hides the panel)
+ * @param props.onClose - Function to close the panel
+ */
 export default function LocationDetailsSheet({ location, onClose }: Props) {
+  // Don't render the panel if no location is selected
   if (!location) return null;
 
   const imageUrls = location.imageUrls ?? [];
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  // Main image is controlled by the currently selected thumbnail
   const mainImageUrl = imageUrls[selectedImageIndex];
 
   return (
@@ -43,6 +52,7 @@ export default function LocationDetailsSheet({ location, onClose }: Props) {
         ✕
       </button>
 
+      {/* Show selected location image, or a placeholder when no images exist */}
       {mainImageUrl ? (
         <>
           <img
