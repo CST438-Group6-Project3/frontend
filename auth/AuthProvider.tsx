@@ -84,50 +84,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    let mounted = true;
+
     const initAuth = async () => {
-      // fetch existing session from Supabase on app start
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
+      try {
+        // fetch existing session from Supabase on app start
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+        setSession(session);
 
-      if (session?.user?.id) {
-        const profile = await fetchUserProfile(session.user.id, session.user.email);
-        setUser(profile);
+        if (session?.user?.id) {
+          const profile = await fetchUserProfile(session.user.id, session.user.email);
+          if (!mounted) return;
+          setUser(profile);
+        }
+      } catch (err) {
+        console.error('initAuth error:', err);
+      } finally {
+        // always resolve loading, even if something threw
+        if (mounted) setLoading(false);
       }
-
-      setLoading(false); // auth state resolved
     };
 
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setSession(session); // update global session
+        try {
+          setSession(session); // update global session
 
-        if (session?.user?.id) {
-          const profile = await fetchUserProfile(session.user.id, session.user.email);
-          setUser(profile);
-        } else {
-          setUser(null);
-        }
+          if (session?.user?.id) {
+            const profile = await fetchUserProfile(session.user.id, session.user.email);
+            if (mounted) setUser(profile);
+          } else {
+            setUser(null);
+          }
 
-        if (session) {
-          // persist session locally depending on platform
-          if (Platform.OS === 'web') {
-            localStorage.setItem('session', JSON.stringify(session));
+          if (session) {
+            // persist session locally depending on platform
+            if (Platform.OS === 'web') {
+              localStorage.setItem('session', JSON.stringify(session));
+            } else {
+              await SecureStore.setItemAsync('session', JSON.stringify(session));
+            }
           } else {
-            await SecureStore.setItemAsync('session', JSON.stringify(session));
+            if (Platform.OS === 'web') {
+              localStorage.removeItem('session');
+            } else {
+              await SecureStore.deleteItemAsync('session');
+            }
           }
-        } else {
-          if (Platform.OS === 'web') {
-            localStorage.removeItem('session');
-          } else {
-            await SecureStore.deleteItemAsync('session');
-          }
+        } catch (err) {
+          console.error('onAuthStateChange error:', err);
         }
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
