@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { getLocations, LocationResponse } from "../api/locations";
-import HiddenGemsMap from "../components/map/Map";
-import LocationDetailsSheet from "../components/location/LocationDetailsSheet";
+import HiddenGemsMap from "../components/map";
+import LocationDetailsSheet from "../components/location";
 
 export default function MapScreen() {
     const [locations, setLocations] = useState<LocationResponse[]>([]);
