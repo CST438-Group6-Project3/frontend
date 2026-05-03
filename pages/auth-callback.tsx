@@ -7,36 +7,29 @@ export default function AuthCallback() {
   const navigation = useNavigation();
 
   useEffect(() => {
-    const handleAuthCallback = async () => {
-      // retrieve current session after OAuth redirect (Google/GitHub)
-      const { data, error } = await supabase.auth.getSession();
-
-      if (error) {
-        // log any issues during session retrieval
-        console.error('Auth callback error:', error);
-      }
-
-      // clean up URL after OAuth
+    // listen for auth state change rather than calling getSession directly —
+    // on web the tokens arrive in the URL hash and Supabase needs a moment
+    // to parse them before getSession returns a valid session
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // clean up URL hash after OAuth on web
       if (typeof window !== 'undefined') {
         window.history.replaceState(null, '', '/');
       }
 
-      if (data.session) {
-        // if login succeeded then redirect to Home and reset navigation stack
+      if (event === 'SIGNED_IN' && session) {
         navigation.reset({
           index: 0,
-          routes: [{ name: 'Home' as never }],
+          routes: [{ name: 'Map' as never }],
         });
-      } else {
-        // if no session then redirect back to Login
+      } else if (event === 'SIGNED_OUT' || (!session && event !== 'INITIAL_SESSION')) {
         navigation.reset({
           index: 0,
           routes: [{ name: 'Login' as never }],
         });
       }
-    };
+    });
 
-    handleAuthCallback(); // run once when component mounts
+    return () => subscription.unsubscribe();
   }, [navigation]);
 
   return (

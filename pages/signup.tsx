@@ -52,18 +52,37 @@ export default function Signup() {
       setSignUpLoading(true);
 
       // attempt signup with Supabase auth
-      const { error } = await supabase.auth.signUp({
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
       });
 
-      setSignUpLoading(false);
-
-      if (error) {
-        setError(error.message);
+      if (signUpError) {
+        setSignUpLoading(false);
+        setError(signUpError.message);
         return;
       }
-      
+
+      // create user profile in users table
+      if (signUpData.user?.id) {
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert([
+            {
+              id: signUpData.user.id,
+              email: email,
+              name: email.split('@')[0], // use email prefix as default name
+              role: 'user',
+            },
+          ]);
+
+        if (insertError) {
+          console.error('Error creating user profile:', insertError);
+          // don't fail the signup, just log it
+        }
+      }
+
+      setSignUpLoading(false);
       setMessage('Check your email to confirm your account. After confirming, you\'ll be signed in automatically.');
     } catch (err) {
       console.error('Signup error:', err);
