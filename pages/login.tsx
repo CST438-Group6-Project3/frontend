@@ -1,18 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth/AuthProvider';
+import * as WebBrowser from 'expo-web-browser';
+
+// required for native OAuth — completes the auth session after redirect back
+WebBrowser.maybeCompleteAuthSession();
+
+const APP_SCHEME = 'hiddengems';
 
 export default function Login() {
   const navigation = useNavigation();
-  const { session, loading } = useAuth(); // global auth state
+  const { session, loading } = useAuth();
 
-  // form state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
-  // error message state
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -28,19 +31,13 @@ export default function Login() {
   async function handleSubmit() {
     setError(null);
 
-    // email/password login via Supabase
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      // show auth errors
       setError(error.message);
       return;
     }
 
-    // successful login then go to Home and clear history
     navigation.reset({
       index: 0,
       routes: [{ name: 'Map' as never }],
@@ -50,55 +47,74 @@ export default function Login() {
   async function signInWithGoogle() {
     setError(null);
 
-    const redirectTo =
-      typeof window !== 'undefined'
-        ? `${window.location.origin}/auth-callback`
-        : undefined;
-
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo,
-        skipBrowserRedirect: typeof window !== 'undefined',
-      },
-    });
-
-    if (error) {
-      setError(error.message);
-      return;
-    }
-
-    // manually redirect browser to Google OAuth page
-    if (data?.url && typeof window !== 'undefined') {
-      window.location.replace(data.url);
+    if (Platform.OS === 'web') {
+      // web: redirect the whole page to Google OAuth
+      const redirectTo = `${window.location.origin}/auth-callback`;
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo, skipBrowserRedirect: true },
+      });
+      if (error) { setError(error.message); return; }
+      if (data?.url) window.location.replace(data.url);
+    } else {
+      // native: open an in-app browser and exchange the code for a session
+      const redirectTo = `${APP_SCHEME}://auth-callback`;
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo, skipBrowserRedirect: true },
+      });
+      if (error) { setError(error.message); return; }
+      if (data?.url) {
+        try {
+          const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+          // hand the redirect URL back to Supabase so it can extract the session tokens
+          if (result.type === 'success' && result.url) {
+            const { error: sessionError } = await supabase.auth.exchangeCodeForSession(result.url);
+            if (sessionError) setError(sessionError.message);
+            // onAuthStateChange in AuthProvider will pick up the session and navigate
+          }
+        } catch (err) {
+          console.error('Google OAuth error:', err);
+          setError('Authentication failed, please try again.');
+        }
+      }
     }
   }
 
   async function signInWithGitHub() {
     setError(null);
 
-    // same redirect as Google but for GitHub
-    const redirectTo =
-      typeof window !== 'undefined'
-        ? `${window.location.origin}/auth-callback`
-        : undefined;
-
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'github',
-      options: {
-        redirectTo,
-        skipBrowserRedirect: typeof window !== 'undefined',
-      },
-    });
-
-    if (error) {
-      setError(error.message);
-      return;
-    }
-
-    // redirect user to GitHub login page
-    if (data?.url && typeof window !== 'undefined') {
-      window.location.replace(data.url);
+    if (Platform.OS === 'web') {
+      // web: redirect the whole page to GitHub OAuth
+      const redirectTo = `${window.location.origin}/auth-callback`;
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: { redirectTo, skipBrowserRedirect: true },
+      });
+      if (error) { setError(error.message); return; }
+      if (data?.url) window.location.replace(data.url);
+    } else {
+      // native: open an in-app browser and exchange the code for a session
+      const redirectTo = `${APP_SCHEME}://auth-callback`;
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: { redirectTo, skipBrowserRedirect: true },
+      });
+      if (error) { setError(error.message); return; }
+      if (data?.url) {
+        try {
+          const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+          // hand the redirect URL back to Supabase so it can extract the session tokens
+          if (result.type === 'success' && result.url) {
+            const { error: sessionError } = await supabase.auth.exchangeCodeForSession(result.url);
+            if (sessionError) setError(sessionError.message);
+            // onAuthStateChange in AuthProvider will pick up the session and navigate
+          }
+        } catch (err) {
+          console.error('GitHub OAuth error:', err);
+          setError('Authentication failed, please try again.');
+        }
+      }
     }
   }
 
