@@ -33,7 +33,6 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // current user session
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -89,6 +88,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initAuth = async () => {
       try {
         // fetch existing session from Supabase on app start
+        // Supabase JS automatically reads from localStorage on web and handles
+        // token refresh — do not manually read/write localStorage here
         const { data: { session } } = await supabase.auth.getSession();
         if (!mounted) return;
         setSession(session);
@@ -101,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (err) {
         console.error('initAuth error:', err);
       } finally {
-        // always resolve loading, even if something threw
+        // always resolve loading no matter what
         if (mounted) setLoading(false);
       }
     };
@@ -111,7 +112,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         try {
-          setSession(session); // update global session
+          if (!mounted) return;
+          setSession(session);
 
           if (session?.user?.id) {
             const profile = await fetchUserProfile(session.user.id, session.user.email);
@@ -120,16 +122,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(null);
           }
 
-          if (session) {
-            // persist session locally depending on platform
-            if (Platform.OS === 'web') {
-              localStorage.setItem('session', JSON.stringify(session));
-            } else {
+          // only persist session manually on native — Supabase JS handles
+          // web localStorage automatically and manual writes cause refresh bugs
+          if (Platform.OS !== 'web') {
+            if (session) {
               await SecureStore.setItemAsync('session', JSON.stringify(session));
-            }
-          } else {
-            if (Platform.OS === 'web') {
-              localStorage.removeItem('session');
             } else {
               await SecureStore.deleteItemAsync('session');
             }
