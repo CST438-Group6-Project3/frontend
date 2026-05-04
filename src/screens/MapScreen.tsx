@@ -71,6 +71,7 @@ export default function MapScreen() {
 
             {selectedLocation && (
                 <Pressable
+                    testID="preview-card"
                     style={styles.previewCard}
                     onPress={() => {
                         setDetailsLocation(selectedLocation);

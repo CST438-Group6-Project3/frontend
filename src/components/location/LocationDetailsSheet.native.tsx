@@ -16,7 +16,15 @@ type Props = {
 	onClose: () => void;
 };
 
+/**
+ * Bottom sheet modal that displays details for a selected location.
+ * Includes an image carousel, description, and metadata.
+ *
+ * @param props.location - The currently selected location from the map (null hides the modal)
+ * @param props.onClose - Callback to close the modal
+ */
 export default function LocationDetailsSheet({ location, onClose }: Props) {
+	// Don't render anything if no location is selected
 	if (!location) return null;
 
 	const imageUrls = location.imageUrls ?? [];
@@ -42,6 +50,7 @@ export default function LocationDetailsSheet({ location, onClose }: Props) {
 					✕
 				</Text>
 
+				// Show placeholder when no images are available
 				{imageUrls.length > 0 ? (
 					<View style={styles.imageCarouselContainer}>
 						<ScrollView
@@ -50,6 +59,7 @@ export default function LocationDetailsSheet({ location, onClose }: Props) {
 							showsHorizontalScrollIndicator={false}
 							onMomentumScrollEnd={(event) => {
 								const index = Math.round(
+									// Determine which image is visible based on horizontal scroll offset
 									event.nativeEvent.contentOffset.x / imageWidth
 								);
 								setCurrentImageIndex(index);
