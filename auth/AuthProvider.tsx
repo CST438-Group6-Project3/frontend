@@ -13,7 +13,6 @@ export interface UserProfile {
   created_at: string;
 }
 
-// global auth context
 const AuthContext = createContext<{
   session: Session | null;
   user: UserProfile | null;
@@ -46,31 +45,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (error) {
-        // if no profile exists, create one
         if (error.code === 'PGRST116') {
-          if (email) {
-            const { data: newProfile, error: insertError } = await supabase
-              .from('users')
-              .insert([
-                {
-                  id: userId,
-                  email: email,
-                  name: email.split('@')[0],
-                  role: 'user',
-                },
-              ])
-              .select()
-              .single();
+          if (!email) return null;
 
-            if (insertError) {
-              console.error('Error creating user profile:', insertError);
-              return null;
-            }
+          const { data: newProfile, error: insertError } = await supabase
+            .from('users')
+            .insert([
+              {
+                id: userId,
+                email,
+                name: email.split('@')[0],
+                role: 'user',
+              },
+            ])
+            .select()
+            .single();
 
-            return newProfile as UserProfile;
+          if (insertError) {
+            console.error('Error creating user profile:', insertError);
+            return null;
           }
-          return null;
+
+          return newProfile as UserProfile;
         }
+
         console.error('Error fetching user profile:', error);
         return null;
       }
@@ -87,22 +85,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const initAuth = async () => {
       try {
-        // fetch existing session from Supabase on app start
-        // Supabase JS automatically reads from localStorage on web and handles
-        // token refresh — do not manually read/write localStorage here
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
         if (!mounted) return;
+
         setSession(session);
 
         if (session?.user?.id) {
-          const profile = await fetchUserProfile(session.user.id, session.user.email);
+          const profile = await fetchUserProfile(
+            session.user.id,
+            session.user.email
+          );
+
           if (!mounted) return;
           setUser(profile);
+        } else {
+          setUser(null);
         }
       } catch (err) {
         console.error('initAuth error:', err);
       } finally {
-        // always resolve loading no matter what
         if (mounted) setLoading(false);
       }
     };
@@ -110,29 +114,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        try {
-          if (!mounted) return;
-          setSession(session);
+      (event, session) => {
+        if (!mounted) return;
 
-          if (session?.user?.id) {
-            const profile = await fetchUserProfile(session.user.id, session.user.email);
-            if (mounted) setUser(profile);
+        setSession(session);
+
+        if (session?.user?.id) {
+          fetchUserProfile(session.user.id, session.user.email)
+            .then((profile) => {
+              if (mounted) setUser(profile);
+            })
+            .catch((err) => {
+              console.error('profile fetch error:', err);
+              if (mounted) setUser(null);
+            });
+        } else {
+          setUser(null);
+        }
+
+        // Only persist manually on native
+        if (Platform.OS !== 'web') {
+          if (session) {
+            SecureStore.setItemAsync('session', JSON.stringify(session));
           } else {
-            setUser(null);
+            SecureStore.deleteItemAsync('session');
           }
-
-          // only persist session manually on native — Supabase JS handles
-          // web localStorage automatically and manual writes cause refresh bugs
-          if (Platform.OS !== 'web') {
-            if (session) {
-              await SecureStore.setItemAsync('session', JSON.stringify(session));
-            } else {
-              await SecureStore.deleteItemAsync('session');
-            }
-          }
-        } catch (err) {
-          console.error('onAuthStateChange error:', err);
         }
       }
     );
