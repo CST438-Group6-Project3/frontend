@@ -38,6 +38,38 @@ export type CreateLocationRequest = {
   createdById: string;
 };
 
+export function getApiErrorMessage(error: unknown) {
+  if (!axios.isAxiosError(error)) {
+    return error instanceof Error
+      ? error.message
+      : "Something went wrong. Please try again.";
+  }
+
+  const responseData = error.response?.data;
+
+  if (typeof responseData === "string") {
+    return responseData;
+  }
+
+  if (responseData && typeof responseData === "object") {
+    const data = responseData as Record<string, unknown>;
+
+    if (typeof data.message === "string") {
+      return data.message;
+    }
+
+    if (typeof data.error === "string") {
+      return data.error;
+    }
+  }
+
+  if (error.response?.status) {
+    return `Request failed with status ${error.response.status}.`;
+  }
+
+  return error.message || "Something went wrong. Please try again.";
+}
+
 export async function getLocations() {
   const res = await axios.get<LocationResponse[]>(`${API_BASE_URL}/locations`);
   return res.data;
