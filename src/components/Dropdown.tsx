@@ -14,10 +14,11 @@ export default function Dropdown({
   if (!visible) return null;
 
   return (
-    <>
-      <Pressable style={styles.overlay} onPress={onClose} />
+    <View style={styles.container} pointerEvents="box-none">
+      
+      <Pressable style={styles.closeArea} onPress={onClose} />
 
-      <View style={styles.dropdown}>
+      <View style={styles.dropdown} pointerEvents="auto">
         <Pressable
           style={styles.item}
           onPress={() => {
@@ -36,14 +37,24 @@ export default function Dropdown({
           <Text style={{ color: "red" }}>Logout</Text>
         </Pressable>
       </View>
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  container: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 9998,
+    pointerEvents: "box-none",
+    zIndex: 10000,
+    elevation: 10000,
+  },
+
+  closeArea: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
 
   dropdown: {
@@ -54,13 +65,12 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderRadius: 12,
     paddingVertical: 8,
+    zIndex: 10001,
 
     shadowColor: "#000",
     shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 5,
-
-    zIndex: 9999,
   },
 
   item: {
