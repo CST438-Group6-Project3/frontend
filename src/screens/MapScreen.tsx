@@ -9,12 +9,13 @@ import {
 } from "react-native";
 import { useAuth } from "../../auth/AuthProvider";
 import {
-  createLocation,
-  getApiErrorMessage,
-  getLocations,
-  LocationCategory,
-  LocationResponse,
-  updateLocation,
+    createLocation,
+    deleteLocation,
+    getApiErrorMessage,
+    getLocations,
+    LocationCategory,
+    LocationResponse,
+    updateLocation,
 } from "../api/locations";
 import {
   MAX_LOCATION_IMAGES,
@@ -73,6 +74,8 @@ export default function MapScreen() {
   const [isSavingEditLocation, setIsSavingEditLocation] = useState(false);
   const [isUploadingEditImages, setIsUploadingEditImages] = useState(false);
   const [editLocationError, setEditLocationError] = useState<string | null>(null);
+    const [isDeletingLocation, setIsDeletingLocation] = useState(false);
+    const [deleteLocationError, setDeleteLocationError] = useState<string | null>(null);
   const canEditDetailsLocation = Boolean(
     detailsLocation &&
     user &&
@@ -149,19 +152,20 @@ export default function MapScreen() {
     setIsUploadingImages(false);
   }
 
-  function startEditingLocation(location: LocationResponse) {
-    setEditingLocation(location);
-    setDetailsLocation(null);
-    setSelectedLocation(null);
-    setDraftCoordinates(null);
-    setEditLocationName(location.name);
-    setEditLocationDescription(location.description ?? "");
-    setEditLocationCategory(location.category);
-    setEditLocationImageUrls(location.imageUrls ?? []);
-    setEditLocationError(null);
-    setIsSavingEditLocation(false);
-    setIsUploadingEditImages(false);
-  }
+    function startEditingLocation(location: LocationResponse) {
+        setEditingLocation(location);
+        setDetailsLocation(null);
+        setSelectedLocation(null);
+        setDraftCoordinates(null);
+        setEditLocationName(location.name);
+        setEditLocationDescription(location.description ?? "");
+        setEditLocationCategory(location.category);
+        setEditLocationImageUrls(location.imageUrls ?? []);
+        setEditLocationError(null);
+        setIsSavingEditLocation(false);
+        setIsUploadingEditImages(false);
+        setDeleteLocationError(null);
+    }
 
   function resetEditLocationForm() {
     setEditingLocation(null);
@@ -313,20 +317,44 @@ export default function MapScreen() {
         imageUrls: editLocationImageUrls,
       });
 
-      setLocations((currentLocations) =>
-        currentLocations.map((location) =>
-          location.id === updatedLocation.id ? updatedLocation : location
-        )
-      );
-      resetEditLocationForm();
-      setDetailsLocation(updatedLocation);
-    } catch (err) {
-      console.error("Failed to update location:", err);
-      setEditLocationError(getApiErrorMessage(err));
-    } finally {
-      setIsSavingEditLocation(false);
+            setLocations((currentLocations) =>
+                currentLocations.map((location) =>
+                    location.id === updatedLocation.id ? updatedLocation : location
+                )
+            );
+            resetEditLocationForm();
+            setDetailsLocation(updatedLocation);
+        } catch (err) {
+            console.error("Failed to update location:", err);
+            setEditLocationError(getApiErrorMessage(err));
+        } finally {
+            setIsSavingEditLocation(false);
+        }
     }
-  }
+
+    async function handleDeleteLocation() {
+        if (!detailsLocation || !canEditDetailsLocation) return;
+
+        try {
+            setIsDeletingLocation(true);
+            setDeleteLocationError(null);
+
+            await deleteLocation(detailsLocation.id);
+
+            setLocations((currentLocations) =>
+                currentLocations.filter((location) => location.id !== detailsLocation.id)
+            );
+            setSelectedLocation((currentLocation) =>
+                currentLocation?.id === detailsLocation.id ? null : currentLocation
+            );
+            setDetailsLocation(null);
+        } catch (err) {
+            console.error("Failed to delete location:", err);
+            setDeleteLocationError(getApiErrorMessage(err));
+        } finally {
+            setIsDeletingLocation(false);
+        }
+    }
 
   if (loading) {
     return (
@@ -445,14 +473,17 @@ export default function MapScreen() {
           onClose={resetAddSpotForm}
         />
 
-        <LocationDetailsSheet
-          location={draftCoordinates || editingLocation ? null : detailsLocation}
-          canEditLocation={canEditDetailsLocation}
-          onClose={() => setDetailsLocation(null)}
-          onEditPress={() => {
-            if (detailsLocation) startEditingLocation(detailsLocation);
-          }}
-        />
+            <LocationDetailsSheet
+                location={draftCoordinates || editingLocation ? null : detailsLocation}
+                canEditLocation={canEditDetailsLocation}
+                isDeletingLocation={isDeletingLocation}
+                deleteError={deleteLocationError}
+                onClose={() => setDetailsLocation(null)}
+                onEditPress={() => {
+                    if (detailsLocation) startEditingLocation(detailsLocation);
+                }}
+                onDeleteConfirm={handleDeleteLocation}
+            />
 
         <EditLocationSheet
           location={editingLocation}

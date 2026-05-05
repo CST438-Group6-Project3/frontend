@@ -100,3 +100,7 @@ export async function updateLocation(
   );
   return res.data;
 }
+
+export async function deleteLocation(locationId: string) {
+  await axios.delete(`${API_BASE_URL}/locations/${locationId}`);
+}
