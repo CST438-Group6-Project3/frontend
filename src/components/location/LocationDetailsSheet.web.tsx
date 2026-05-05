@@ -1,3 +1,4 @@
+import React from "react";
 import { useState } from "react";
 import type { LocationResponse } from "../../api/locations";
 
@@ -18,6 +19,7 @@ export default function LocationDetailsSheet({
 
   const imageUrls = location.imageUrls ?? [];
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [showDeleteWarning, setShowDeleteWarning] = useState(false);
   const mainImageUrl = imageUrls[selectedImageIndex];
 
   return (
@@ -156,6 +158,7 @@ export default function LocationDetailsSheet({
           </button>
           <button
             type="button"
+            onClick={() => setShowDeleteWarning(true)}
             style={{
               width: "100%",
               border: "1px solid #dc2626",
@@ -171,6 +174,93 @@ export default function LocationDetailsSheet({
           >
             Delete location
           </button>
+        </div>
+      )}
+
+      {showDeleteWarning && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-location-title"
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(17,24,39,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+            zIndex: 10001,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 360,
+              borderRadius: 12,
+              backgroundColor: "white",
+              boxShadow: "0 18px 45px rgba(0,0,0,0.24)",
+              padding: 22,
+            }}
+          >
+            <h3
+              id="delete-location-title"
+              style={{
+                margin: 0,
+                color: "#111827",
+                fontSize: 20,
+                fontWeight: 800,
+              }}
+            >
+              Delete location?
+            </h3>
+            <p
+              style={{
+                color: "#4b5563",
+                fontSize: 15,
+                lineHeight: 1.5,
+                marginBottom: 20,
+                marginTop: 10,
+              }}
+            >
+              This action is not reversible. The location and its details would be
+              permanently removed.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowDeleteWarning(false)}
+              style={{
+                width: "100%",
+                border: "none",
+                borderRadius: 8,
+                backgroundColor: "#111827",
+                color: "white",
+                cursor: "pointer",
+                fontSize: 15,
+                fontWeight: 700,
+                padding: "12px 14px",
+              }}
+            >
+              Keep location
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowDeleteWarning(false)}
+              style={{
+                width: "100%",
+                border: "none",
+                backgroundColor: "transparent",
+                color: "#dc2626",
+                cursor: "pointer",
+                fontSize: 15,
+                fontWeight: 700,
+                marginTop: 10,
+                padding: "12px 14px",
+              }}
+            >
+              I understand
+            </button>
+          </div>
         </div>
       )}
     </div>
