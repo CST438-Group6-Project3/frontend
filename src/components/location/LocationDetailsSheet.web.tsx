@@ -3,10 +3,15 @@ import type { LocationResponse } from "../../api/locations";
 
 type Props = {
   location: LocationResponse | null;
+  canEditLocation?: boolean;
   onClose: () => void;
 };
 
-export default function LocationDetailsSheet({ location, onClose }: Props) {
+export default function LocationDetailsSheet({
+  location,
+  canEditLocation = false,
+  onClose,
+}: Props) {
   if (!location) return null;
 
   const imageUrls = location.imageUrls ?? [];
@@ -121,6 +126,33 @@ export default function LocationDetailsSheet({ location, onClose }: Props) {
       <p>
         <strong>Coordinates:</strong> {location.lat}, {location.lng}
       </p>
+
+      {canEditLocation && (
+        <div
+          style={{
+            borderTop: "1px solid #e5e7eb",
+            marginTop: 24,
+            paddingTop: 20,
+          }}
+        >
+          <button
+            type="button"
+            style={{
+              width: "100%",
+              border: "none",
+              borderRadius: 8,
+              backgroundColor: "#111827",
+              color: "white",
+              cursor: "pointer",
+              fontSize: 16,
+              fontWeight: 700,
+              padding: "14px 16px",
+            }}
+          >
+            Edit location
+          </button>
+        </div>
+      )}
     </div>
   );
 }
