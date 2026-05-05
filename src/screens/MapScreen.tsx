@@ -14,6 +14,11 @@ import {
     LocationCategory,
     LocationResponse,
 } from "../api/locations";
+import {
+    MAX_LOCATION_IMAGES,
+    SpotImageUpload,
+    uploadLocationImages,
+} from "../api/imageUploads";
 import HiddenGemsMap from "../components/map";
 import AddSpotSheet from "../components/location/AddSpotSheet";
 import LocationDetailsSheet from "../components/location";
@@ -49,7 +54,9 @@ export default function MapScreen() {
     const [newSpotDescription, setNewSpotDescription] = useState("");
     const [newSpotCategory, setNewSpotCategory] =
         useState<LocationCategory>("study_spot");
+    const [newSpotImageUrls, setNewSpotImageUrls] = useState<string[]>([]);
     const [isSavingSpot, setIsSavingSpot] = useState(false);
+    const [isUploadingImages, setIsUploadingImages] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -116,8 +123,48 @@ export default function MapScreen() {
         setNewSpotName("");
         setNewSpotDescription("");
         setNewSpotCategory("study_spot");
+        setNewSpotImageUrls([]);
         setSaveError(null);
         setIsSavingSpot(false);
+        setIsUploadingImages(false);
+    }
+
+    async function handleAddImages(images: SpotImageUpload[]) {
+        if (!user?.id) {
+            setSaveError("Sign in before uploading images.");
+            return;
+        }
+
+        const remainingSlots = MAX_LOCATION_IMAGES - newSpotImageUrls.length;
+        if (remainingSlots <= 0) {
+            setSaveError(`You can upload up to ${MAX_LOCATION_IMAGES} images.`);
+            return;
+        }
+
+        const imagesToUpload = images.slice(0, remainingSlots);
+        if (images.length > remainingSlots) {
+            setSaveError(`Only ${remainingSlots} more image(s) can be added.`);
+        } else {
+            setSaveError(null);
+        }
+
+        try {
+            setIsUploadingImages(true);
+
+            const uploadedUrls = await uploadLocationImages(imagesToUpload, user.id);
+            setNewSpotImageUrls((currentUrls) => [...currentUrls, ...uploadedUrls]);
+        } catch (err) {
+            console.error("Failed to upload location images:", err);
+            setSaveError(getApiErrorMessage(err));
+        } finally {
+            setIsUploadingImages(false);
+        }
+    }
+
+    function handleRemoveImage(imageUrl: string) {
+        setNewSpotImageUrls((currentUrls) =>
+            currentUrls.filter((currentUrl) => currentUrl !== imageUrl)
+        );
     }
 
     async function handleCreateSpot() {
@@ -143,7 +190,7 @@ export default function MapScreen() {
                 description: newSpotDescription.trim() || undefined,
                 category: newSpotCategory,
                 tags: [],
-                imageUrls: [],
+                imageUrls: newSpotImageUrls,
                 lat: draftCoordinates.lat,
                 lng: draftCoordinates.lng,
                 createdById: user.id,
@@ -237,11 +284,15 @@ export default function MapScreen() {
                 name={newSpotName}
                 description={newSpotDescription}
                 category={newSpotCategory}
+                imageUrls={newSpotImageUrls}
                 isSaving={isSavingSpot}
+                isUploadingImages={isUploadingImages}
                 error={saveError}
                 onNameChange={setNewSpotName}
                 onDescriptionChange={setNewSpotDescription}
                 onCategoryChange={setNewSpotCategory}
+                onAddImages={handleAddImages}
+                onRemoveImage={handleRemoveImage}
                 onSubmit={handleCreateSpot}
                 onClose={resetAddSpotForm}
             />
