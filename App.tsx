@@ -9,6 +9,7 @@ import Signup from "./pages/signup";
 import AuthCallback from "./pages/auth-callback";
 import Home from "./pages/home";
 import MapScreen from "./src/screens/MapScreen";
+import Profile from "./src/screens/ProfileScreen"; 
 
 export type RootStackParamList = {
   Login: undefined;
@@ -16,6 +17,7 @@ export type RootStackParamList = {
   AuthCallback: undefined;
   Home: undefined;
   Map: undefined;
+  Profile: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -33,6 +35,8 @@ export default function App() {
           <Stack.Screen name="AuthCallback" component={AuthCallback} />
           <Stack.Screen name="Home" component={Home} />
           <Stack.Screen name="Map" component={MapScreen} />
+
+          <Stack.Screen name="Profile" component={Profile} />
         </Stack.Navigator>
 
         <StatusBar style="auto" />
