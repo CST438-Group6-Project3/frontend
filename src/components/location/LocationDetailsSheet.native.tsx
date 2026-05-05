@@ -100,6 +100,9 @@ export default function LocationDetailsSheet({
 						<Pressable style={styles.editButton} onPress={onEditPress}>
 							<Text style={styles.editButtonText}>Edit location</Text>
 						</Pressable>
+						<Pressable style={styles.deleteButton}>
+							<Text style={styles.deleteButtonText}>Delete location</Text>
+						</Pressable>
 					</View>
 				)}
 			</View>
@@ -209,6 +212,22 @@ const styles = StyleSheet.create({
 	},
 	editButtonText: {
 		color: "white",
+		fontSize: 16,
+		fontWeight: "700",
+	},
+	deleteButton: {
+		width: "100%",
+		borderWidth: 1,
+		borderColor: "#dc2626",
+		borderRadius: 8,
+		backgroundColor: "white",
+		marginTop: 10,
+		paddingVertical: 14,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	deleteButtonText: {
+		color: "#dc2626",
 		fontSize: 16,
 		fontWeight: "700",
 	},
