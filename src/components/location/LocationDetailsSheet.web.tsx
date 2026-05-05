@@ -154,6 +154,23 @@ export default function LocationDetailsSheet({
           >
             Edit location
           </button>
+          <button
+            type="button"
+            style={{
+              width: "100%",
+              border: "1px solid #dc2626",
+              borderRadius: 8,
+              backgroundColor: "white",
+              color: "#dc2626",
+              cursor: "pointer",
+              fontSize: 16,
+              fontWeight: 700,
+              marginTop: 10,
+              padding: "14px 16px",
+            }}
+          >
+            Delete location
+          </button>
         </div>
       )}
     </div>
