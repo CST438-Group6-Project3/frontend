@@ -25,6 +25,9 @@ type CategoryOption = {
 type Props = {
   coordinates: Coordinates | null;
   categories: CategoryOption[];
+  title?: string;
+  submitLabel?: string;
+  savingLabel?: string;
   name: string;
   description: string;
   category: LocationCategory;
@@ -44,6 +47,9 @@ type Props = {
 export default function AddSpotSheet({
   coordinates,
   categories,
+  title = "Add spot",
+  submitLabel = "Create spot",
+  savingLabel = "Saving...",
   name,
   description,
   category,
@@ -109,7 +115,7 @@ export default function AddSpotSheet({
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.header}>
-              <Text style={styles.title}>Add spot</Text>
+              <Text style={styles.title}>{title}</Text>
               <Pressable onPress={onClose} style={styles.closeButton}>
                 <Text style={styles.closeText}>x</Text>
               </Pressable>
@@ -213,7 +219,7 @@ export default function AddSpotSheet({
               disabled={isSaving || isUploadingImages}
             >
               <Text style={styles.submitButtonText}>
-                {isSaving ? "Saving..." : "Create spot"}
+                {isSaving ? savingLabel : submitLabel}
               </Text>
             </Pressable>
           </ScrollView>
