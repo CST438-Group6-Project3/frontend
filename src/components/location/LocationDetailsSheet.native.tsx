@@ -8,6 +8,7 @@ import {
 	Text,
 	View,
 } from "react-native";
+import React from "react";
 import { useState } from "react";
 import type { LocationResponse } from "../../api/locations";
 
@@ -28,6 +29,7 @@ export default function LocationDetailsSheet({
 
 	const imageUrls = location.imageUrls ?? [];
 	const [currentImageIndex, setCurrentImageIndex] = useState(0);
+	const [showDeleteWarning, setShowDeleteWarning] = useState(false);
 	const screenWidth = Dimensions.get("window").width;
 	const imageWidth = screenWidth - 48;
 
@@ -100,11 +102,43 @@ export default function LocationDetailsSheet({
 						<Pressable style={styles.editButton} onPress={onEditPress}>
 							<Text style={styles.editButtonText}>Edit location</Text>
 						</Pressable>
-						<Pressable style={styles.deleteButton}>
+						<Pressable
+							style={styles.deleteButton}
+							onPress={() => setShowDeleteWarning(true)}
+						>
 							<Text style={styles.deleteButtonText}>Delete location</Text>
 						</Pressable>
 					</View>
 				)}
+
+				<Modal
+					visible={showDeleteWarning}
+					transparent
+					animationType="fade"
+					onRequestClose={() => setShowDeleteWarning(false)}
+				>
+					<View style={styles.warningBackdrop}>
+						<View style={styles.warningDialog}>
+							<Text style={styles.warningTitle}>Delete location?</Text>
+							<Text style={styles.warningText}>
+								This action is not reversible. The location and its details
+								would be permanently removed.
+							</Text>
+							<Pressable
+								style={styles.keepButton}
+								onPress={() => setShowDeleteWarning(false)}
+							>
+								<Text style={styles.keepButtonText}>Keep location</Text>
+							</Pressable>
+							<Pressable
+								style={styles.understandButton}
+								onPress={() => setShowDeleteWarning(false)}
+							>
+								<Text style={styles.understandButtonText}>I understand</Text>
+							</Pressable>
+						</View>
+					</View>
+				</Modal>
 			</View>
 		</Modal>
 	);
@@ -229,6 +263,57 @@ const styles = StyleSheet.create({
 	deleteButtonText: {
 		color: "#dc2626",
 		fontSize: 16,
+		fontWeight: "700",
+	},
+	warningBackdrop: {
+		...StyleSheet.absoluteFillObject,
+		backgroundColor: "rgba(17,24,39,0.45)",
+		alignItems: "center",
+		justifyContent: "center",
+		padding: 20,
+	},
+	warningDialog: {
+		width: "100%",
+		maxWidth: 360,
+		borderRadius: 12,
+		backgroundColor: "white",
+		padding: 22,
+	},
+	warningTitle: {
+		color: "#111827",
+		fontSize: 20,
+		fontWeight: "800",
+	},
+	warningText: {
+		color: "#4b5563",
+		fontSize: 15,
+		lineHeight: 22,
+		marginTop: 10,
+		marginBottom: 20,
+	},
+	keepButton: {
+		width: "100%",
+		borderRadius: 8,
+		backgroundColor: "#111827",
+		paddingVertical: 12,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	keepButtonText: {
+		color: "white",
+		fontSize: 15,
+		fontWeight: "700",
+	},
+	understandButton: {
+		width: "100%",
+		marginTop: 10,
+		paddingVertical: 12,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	understandButtonText: {
+		color: "#dc2626",
+		fontSize: 15,
 		fontWeight: "700",
 	},
 });
