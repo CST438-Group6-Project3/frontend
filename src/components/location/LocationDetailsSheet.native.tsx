@@ -15,15 +15,21 @@ import type { LocationResponse } from "../../api/locations";
 type Props = {
 	location: LocationResponse | null;
 	canEditLocation?: boolean;
+	isDeletingLocation?: boolean;
+	deleteError?: string | null;
 	onClose: () => void;
 	onEditPress?: () => void;
+	onDeleteConfirm?: () => void;
 };
 
 export default function LocationDetailsSheet({
 	location,
 	canEditLocation = false,
+	isDeletingLocation = false,
+	deleteError = null,
 	onClose,
 	onEditPress,
+	onDeleteConfirm,
 }: Props) {
 	if (!location) return null;
 
@@ -124,17 +130,30 @@ export default function LocationDetailsSheet({
 								This action is not reversible. The location and its details
 								would be permanently removed.
 							</Text>
+							{deleteError && (
+								<Text style={styles.warningError}>{deleteError}</Text>
+							)}
 							<Pressable
-								style={styles.keepButton}
+								style={[
+									styles.keepButton,
+									isDeletingLocation && styles.actionButtonDisabled,
+								]}
 								onPress={() => setShowDeleteWarning(false)}
+								disabled={isDeletingLocation}
 							>
 								<Text style={styles.keepButtonText}>Keep location</Text>
 							</Pressable>
 							<Pressable
-								style={styles.understandButton}
-								onPress={() => setShowDeleteWarning(false)}
+								style={[
+									styles.understandButton,
+									isDeletingLocation && styles.actionButtonDisabled,
+								]}
+								onPress={onDeleteConfirm}
+								disabled={isDeletingLocation}
 							>
-								<Text style={styles.understandButtonText}>I understand</Text>
+								<Text style={styles.understandButtonText}>
+									{isDeletingLocation ? "Deleting..." : "Delete location"}
+								</Text>
 							</Pressable>
 						</View>
 					</View>
@@ -291,6 +310,13 @@ const styles = StyleSheet.create({
 		marginTop: 10,
 		marginBottom: 20,
 	},
+	warningError: {
+		color: "#dc2626",
+		fontSize: 14,
+		fontWeight: "700",
+		marginTop: -6,
+		marginBottom: 14,
+	},
 	keepButton: {
 		width: "100%",
 		borderRadius: 8,
@@ -315,5 +341,8 @@ const styles = StyleSheet.create({
 		color: "#dc2626",
 		fontSize: 15,
 		fontWeight: "700",
+	},
+	actionButtonDisabled: {
+		opacity: 0.65,
 	},
 });

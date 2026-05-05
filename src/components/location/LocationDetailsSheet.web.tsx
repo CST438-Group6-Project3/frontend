@@ -5,15 +5,21 @@ import type { LocationResponse } from "../../api/locations";
 type Props = {
   location: LocationResponse | null;
   canEditLocation?: boolean;
+  isDeletingLocation?: boolean;
+  deleteError?: string | null;
   onClose: () => void;
   onEditPress?: () => void;
+  onDeleteConfirm?: () => void;
 };
 
 export default function LocationDetailsSheet({
   location,
   canEditLocation = false,
+  isDeletingLocation = false,
+  deleteError = null,
   onClose,
   onEditPress,
+  onDeleteConfirm,
 }: Props) {
   if (!location) return null;
 
@@ -226,9 +232,23 @@ export default function LocationDetailsSheet({
               This action is not reversible. The location and its details would be
               permanently removed.
             </p>
+            {deleteError && (
+              <p
+                style={{
+                  color: "#dc2626",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  marginBottom: 14,
+                  marginTop: -6,
+                }}
+              >
+                {deleteError}
+              </p>
+            )}
             <button
               type="button"
               onClick={() => setShowDeleteWarning(false)}
+              disabled={isDeletingLocation}
               style={{
                 width: "100%",
                 border: "none",
@@ -238,6 +258,7 @@ export default function LocationDetailsSheet({
                 cursor: "pointer",
                 fontSize: 15,
                 fontWeight: 700,
+                opacity: isDeletingLocation ? 0.65 : 1,
                 padding: "12px 14px",
               }}
             >
@@ -245,7 +266,8 @@ export default function LocationDetailsSheet({
             </button>
             <button
               type="button"
-              onClick={() => setShowDeleteWarning(false)}
+              onClick={onDeleteConfirm}
+              disabled={isDeletingLocation}
               style={{
                 width: "100%",
                 border: "none",
@@ -255,10 +277,11 @@ export default function LocationDetailsSheet({
                 fontSize: 15,
                 fontWeight: 700,
                 marginTop: 10,
+                opacity: isDeletingLocation ? 0.65 : 1,
                 padding: "12px 14px",
               }}
             >
-              I understand
+              {isDeletingLocation ? "Deleting..." : "Delete location"}
             </button>
           </div>
         </div>

@@ -9,6 +9,7 @@ import {
 import { useAuth } from "../../auth/AuthProvider";
 import {
     createLocation,
+    deleteLocation,
     getApiErrorMessage,
     getLocations,
     LocationCategory,
@@ -70,6 +71,8 @@ export default function MapScreen() {
     const [isSavingEditLocation, setIsSavingEditLocation] = useState(false);
     const [isUploadingEditImages, setIsUploadingEditImages] = useState(false);
     const [editLocationError, setEditLocationError] = useState<string | null>(null);
+    const [isDeletingLocation, setIsDeletingLocation] = useState(false);
+    const [deleteLocationError, setDeleteLocationError] = useState<string | null>(null);
     const canEditDetailsLocation = Boolean(
         detailsLocation &&
             user &&
@@ -158,6 +161,7 @@ export default function MapScreen() {
         setEditLocationError(null);
         setIsSavingEditLocation(false);
         setIsUploadingEditImages(false);
+        setDeleteLocationError(null);
     }
 
     function resetEditLocationForm() {
@@ -325,6 +329,30 @@ export default function MapScreen() {
         }
     }
 
+    async function handleDeleteLocation() {
+        if (!detailsLocation || !canEditDetailsLocation) return;
+
+        try {
+            setIsDeletingLocation(true);
+            setDeleteLocationError(null);
+
+            await deleteLocation(detailsLocation.id);
+
+            setLocations((currentLocations) =>
+                currentLocations.filter((location) => location.id !== detailsLocation.id)
+            );
+            setSelectedLocation((currentLocation) =>
+                currentLocation?.id === detailsLocation.id ? null : currentLocation
+            );
+            setDetailsLocation(null);
+        } catch (err) {
+            console.error("Failed to delete location:", err);
+            setDeleteLocationError(getApiErrorMessage(err));
+        } finally {
+            setIsDeletingLocation(false);
+        }
+    }
+
     if (loading) {
         return (
             <View style={styles.center}>
@@ -418,10 +446,13 @@ export default function MapScreen() {
             <LocationDetailsSheet
                 location={draftCoordinates || editingLocation ? null : detailsLocation}
                 canEditLocation={canEditDetailsLocation}
+                isDeletingLocation={isDeletingLocation}
+                deleteError={deleteLocationError}
                 onClose={() => setDetailsLocation(null)}
                 onEditPress={() => {
                     if (detailsLocation) startEditingLocation(detailsLocation);
                 }}
+                onDeleteConfirm={handleDeleteLocation}
             />
 
             <EditLocationSheet
