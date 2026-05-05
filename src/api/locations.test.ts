@@ -3,7 +3,9 @@ import {
   createLocation,
   getApiErrorMessage,
   getLocations,
+  updateLocation,
   type CreateLocationRequest,
+  type UpdateLocationRequest,
 } from "./locations";
 
 jest.mock("axios");
@@ -64,6 +66,36 @@ describe("locations api", () => {
     await expect(createLocation(payload)).resolves.toEqual(createdLocation);
     expect(mockedAxios.post).toHaveBeenCalledWith(
       "http://localhost:8080/api/locations",
+      payload
+    );
+  });
+
+  it("patches an existing location and returns the updated location", async () => {
+    const payload: UpdateLocationRequest = {
+      name: "Updated courtyard",
+      description: "More tables now",
+      category: "study_spot",
+      imageUrls: ["https://example.com/updated.jpg"],
+    };
+    const updatedLocation = {
+      ...payload,
+      id: "location-1",
+      lat: 36.2,
+      lng: -121.2,
+      createdById: "user-1",
+      status: "pending",
+      avgRating: 0,
+      createdAt: "2026-01-01T00:00:00",
+      updatedAt: "2026-01-02T00:00:00",
+    };
+
+    mockedAxios.patch.mockResolvedValueOnce({ data: updatedLocation });
+
+    await expect(updateLocation("location-1", payload)).resolves.toEqual(
+      updatedLocation
+    );
+    expect(mockedAxios.patch).toHaveBeenCalledWith(
+      "http://localhost:8080/api/locations/location-1",
       payload
     );
   });
