@@ -2,11 +2,20 @@ import axios from "axios";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8080/api";
 
+export type LocationCategory =
+  | "study_spot"
+  | "food"
+  | "scenic"
+  | "hangout"
+  | "trail"
+  | "activity"
+  | "other";
+
 export type LocationResponse = {
   id: string;
   name: string;
   description?: string;
-  category: "study_spot" | "food" | "scenic" | "hangout" | "trail" | "activity" | "other";
+  category: LocationCategory;
   tags?: string[];
   imageUrls?: string[];
   lat: number;
@@ -18,7 +27,26 @@ export type LocationResponse = {
   updatedAt: string;
 };
 
+export type CreateLocationRequest = {
+  name: string;
+  description?: string;
+  category: LocationCategory;
+  tags?: string[];
+  imageUrls?: string[];
+  lat: number;
+  lng: number;
+  createdById: string;
+};
+
 export async function getLocations() {
   const res = await axios.get<LocationResponse[]>(`${API_BASE_URL}/locations`);
+  return res.data;
+}
+
+export async function createLocation(payload: CreateLocationRequest) {
+  const res = await axios.post<LocationResponse>(
+    `${API_BASE_URL}/locations`,
+    payload
+  );
   return res.data;
 }
