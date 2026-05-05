@@ -13,10 +13,15 @@ import type { LocationResponse } from "../../api/locations";
 
 type Props = {
 	location: LocationResponse | null;
+	canEditLocation?: boolean;
 	onClose: () => void;
 };
 
-export default function LocationDetailsSheet({ location, onClose }: Props) {
+export default function LocationDetailsSheet({
+	location,
+	canEditLocation = false,
+	onClose,
+}: Props) {
 	if (!location) return null;
 
 	const imageUrls = location.imageUrls ?? [];
@@ -87,6 +92,14 @@ export default function LocationDetailsSheet({ location, onClose }: Props) {
 				<Text style={styles.text}>
 					Coordinates: {location.lat}, {location.lng}
 				</Text>
+
+				{canEditLocation && (
+					<View style={styles.actions}>
+						<Pressable style={styles.editButton}>
+							<Text style={styles.editButtonText}>Edit location</Text>
+						</Pressable>
+					</View>
+				)}
 			</View>
 		</Modal>
 	);
@@ -176,6 +189,25 @@ const styles = StyleSheet.create({
 	imageCounterText: {
 		color: "white",
 		fontSize: 12,
+		fontWeight: "700",
+	},
+	actions: {
+		borderTopWidth: 1,
+		borderTopColor: "#e5e7eb",
+		marginTop: 16,
+		paddingTop: 16,
+	},
+	editButton: {
+		width: "100%",
+		borderRadius: 8,
+		backgroundColor: "#111827",
+		paddingVertical: 14,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	editButtonText: {
+		color: "white",
+		fontSize: 16,
 		fontWeight: "700",
 	},
 });

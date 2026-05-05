@@ -58,6 +58,11 @@ export default function MapScreen() {
     const [isSavingSpot, setIsSavingSpot] = useState(false);
     const [isUploadingImages, setIsUploadingImages] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
+    const canEditDetailsLocation = Boolean(
+        detailsLocation &&
+            user &&
+            (detailsLocation.createdById === user.id || user.role === "admin")
+    );
 
     useEffect(() => {
         async function loadLocations() {
@@ -299,6 +304,7 @@ export default function MapScreen() {
 
             <LocationDetailsSheet
                 location={draftCoordinates ? null : detailsLocation}
+                canEditLocation={canEditDetailsLocation}
                 onClose={() => setDetailsLocation(null)}
             />
         </View>
