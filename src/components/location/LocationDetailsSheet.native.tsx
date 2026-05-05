@@ -15,12 +15,14 @@ type Props = {
 	location: LocationResponse | null;
 	canEditLocation?: boolean;
 	onClose: () => void;
+	onEditPress?: () => void;
 };
 
 export default function LocationDetailsSheet({
 	location,
 	canEditLocation = false,
 	onClose,
+	onEditPress,
 }: Props) {
 	if (!location) return null;
 
@@ -95,7 +97,7 @@ export default function LocationDetailsSheet({
 
 				{canEditLocation && (
 					<View style={styles.actions}>
-						<Pressable style={styles.editButton}>
+						<Pressable style={styles.editButton} onPress={onEditPress}>
 							<Text style={styles.editButtonText}>Edit location</Text>
 						</Pressable>
 					</View>

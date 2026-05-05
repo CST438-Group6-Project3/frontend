@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -14,16 +14,18 @@ import {
   getLocations,
   LocationCategory,
   LocationResponse,
+  updateLocation,
 } from "../api/locations";
 import {
-    MAX_LOCATION_IMAGES,
-    SpotImageUpload,
-    uploadLocationImages,
+  MAX_LOCATION_IMAGES,
+  SpotImageUpload,
+  uploadLocationImages,
 } from "../api/imageUploads";
 import HiddenGemsMap from "../components/map";
 import AddSpotSheet from "../components/location/AddSpotSheet";
 import LocationDetailsSheet from "../components/location";
 import Dropdown from "../components/Dropdown";
+import EditLocationSheet from "../components/location/EditLocationSheet";
 
 const CATEGORIES: { value: LocationCategory; label: string }[] = [
   { value: "study_spot", label: "Study" },
@@ -41,31 +43,41 @@ type DraftSpotCoordinates = {
 };
 
 export default function MapScreen() {
-    const { user } = useAuth();
-    const [locations, setLocations] = useState<LocationResponse[]>([]);
-    const [selectedLocation, setSelectedLocation] =
-        useState<LocationResponse | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [detailsLocation, setDetailsLocation] =
-        useState<LocationResponse | null>(null);
-    const [isPickingLocation, setIsPickingLocation] = useState(false);
-    const [draftCoordinates, setDraftCoordinates] =
-        useState<DraftSpotCoordinates | null>(null);
-    const [newSpotName, setNewSpotName] = useState("");
-    const [newSpotDescription, setNewSpotDescription] = useState("");
-    const [newSpotCategory, setNewSpotCategory] =
-        useState<LocationCategory>("study_spot");
-    const [newSpotImageUrls, setNewSpotImageUrls] = useState<string[]>([]);
-    const [isSavingSpot, setIsSavingSpot] = useState(false);
-    const [isUploadingImages, setIsUploadingImages] = useState(false);
-    const [saveError, setSaveError] = useState<string | null>(null);
-    const [dropdownOpen, setDropdownOpen] = useState(false);
-    const canEditDetailsLocation = Boolean(
-        detailsLocation &&
-            user &&
-            (detailsLocation.createdById === user.id || user.role === "admin")
-    );
+  const { user } = useAuth();
+  const [locations, setLocations] = useState<LocationResponse[]>([]);
+  const [selectedLocation, setSelectedLocation] =
+    useState<LocationResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [detailsLocation, setDetailsLocation] =
+    useState<LocationResponse | null>(null);
+  const [isPickingLocation, setIsPickingLocation] = useState(false);
+  const [draftCoordinates, setDraftCoordinates] =
+    useState<DraftSpotCoordinates | null>(null);
+  const [newSpotName, setNewSpotName] = useState("");
+  const [newSpotDescription, setNewSpotDescription] = useState("");
+  const [newSpotCategory, setNewSpotCategory] =
+    useState<LocationCategory>("study_spot");
+  const [newSpotImageUrls, setNewSpotImageUrls] = useState<string[]>([]);
+  const [isSavingSpot, setIsSavingSpot] = useState(false);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [editingLocation, setEditingLocation] =
+    useState<LocationResponse | null>(null);
+  const [editLocationName, setEditLocationName] = useState("");
+  const [editLocationDescription, setEditLocationDescription] = useState("");
+  const [editLocationCategory, setEditLocationCategory] =
+    useState<LocationCategory>("study_spot");
+  const [editLocationImageUrls, setEditLocationImageUrls] = useState<string[]>([]);
+  const [isSavingEditLocation, setIsSavingEditLocation] = useState(false);
+  const [isUploadingEditImages, setIsUploadingEditImages] = useState(false);
+  const [editLocationError, setEditLocationError] = useState<string | null>(null);
+  const canEditDetailsLocation = Boolean(
+    detailsLocation &&
+    user &&
+    (detailsLocation.createdById === user.id || user.role === "admin")
+  );
 
   useEffect(() => {
     async function loadLocations() {
@@ -126,54 +138,120 @@ export default function MapScreen() {
     setSaveError(null);
   }
 
-    function resetAddSpotForm() {
-        setDraftCoordinates(null);
-        setNewSpotName("");
-        setNewSpotDescription("");
-        setNewSpotCategory("study_spot");
-        setNewSpotImageUrls([]);
-        setSaveError(null);
-        setIsSavingSpot(false);
-        setIsUploadingImages(false);
+  function resetAddSpotForm() {
+    setDraftCoordinates(null);
+    setNewSpotName("");
+    setNewSpotDescription("");
+    setNewSpotCategory("study_spot");
+    setNewSpotImageUrls([]);
+    setSaveError(null);
+    setIsSavingSpot(false);
+    setIsUploadingImages(false);
+  }
+
+  function startEditingLocation(location: LocationResponse) {
+    setEditingLocation(location);
+    setDetailsLocation(null);
+    setSelectedLocation(null);
+    setDraftCoordinates(null);
+    setEditLocationName(location.name);
+    setEditLocationDescription(location.description ?? "");
+    setEditLocationCategory(location.category);
+    setEditLocationImageUrls(location.imageUrls ?? []);
+    setEditLocationError(null);
+    setIsSavingEditLocation(false);
+    setIsUploadingEditImages(false);
+  }
+
+  function resetEditLocationForm() {
+    setEditingLocation(null);
+    setEditLocationName("");
+    setEditLocationDescription("");
+    setEditLocationCategory("study_spot");
+    setEditLocationImageUrls([]);
+    setEditLocationError(null);
+    setIsSavingEditLocation(false);
+    setIsUploadingEditImages(false);
+  }
+
+  async function handleAddImages(images: SpotImageUpload[]) {
+    if (!user?.id) {
+      setSaveError("Sign in before uploading images.");
+      return;
     }
 
-    async function handleAddImages(images: SpotImageUpload[]) {
-        if (!user?.id) {
-            setSaveError("Sign in before uploading images.");
-            return;
-        }
-
-        const remainingSlots = MAX_LOCATION_IMAGES - newSpotImageUrls.length;
-        if (remainingSlots <= 0) {
-            setSaveError(`You can upload up to ${MAX_LOCATION_IMAGES} images.`);
-            return;
-        }
-
-        const imagesToUpload = images.slice(0, remainingSlots);
-        if (images.length > remainingSlots) {
-            setSaveError(`Only ${remainingSlots} more image(s) can be added.`);
-        } else {
-            setSaveError(null);
-        }
-
-        try {
-            setIsUploadingImages(true);
-
-            const uploadedUrls = await uploadLocationImages(imagesToUpload, user.id);
-            setNewSpotImageUrls((currentUrls) => [...currentUrls, ...uploadedUrls]);
-        } catch (err) {
-            console.error("Failed to upload location images:", err);
-            setSaveError(getApiErrorMessage(err));
-        } finally {
-            setIsUploadingImages(false);
-        }
+    const remainingSlots = MAX_LOCATION_IMAGES - newSpotImageUrls.length;
+    if (remainingSlots <= 0) {
+      setSaveError(`You can upload up to ${MAX_LOCATION_IMAGES} images.`);
+      return;
     }
 
-    function handleRemoveImage(imageUrl: string) {
-        setNewSpotImageUrls((currentUrls) =>
-            currentUrls.filter((currentUrl) => currentUrl !== imageUrl)
-        );
+    const imagesToUpload = images.slice(0, remainingSlots);
+    if (images.length > remainingSlots) {
+      setSaveError(`Only ${remainingSlots} more image(s) can be added.`);
+    } else {
+      setSaveError(null);
     }
+
+    try {
+      setIsUploadingImages(true);
+
+      const uploadedUrls = await uploadLocationImages(imagesToUpload, user.id);
+      setNewSpotImageUrls((currentUrls) => [...currentUrls, ...uploadedUrls]);
+    } catch (err) {
+      console.error("Failed to upload location images:", err);
+      setSaveError(getApiErrorMessage(err));
+    } finally {
+      setIsUploadingImages(false);
+    }
+  }
+
+  function handleRemoveImage(imageUrl: string) {
+    setNewSpotImageUrls((currentUrls) =>
+      currentUrls.filter((currentUrl) => currentUrl !== imageUrl)
+    );
+  }
+
+  async function handleAddEditImages(images: SpotImageUpload[]) {
+    if (!user?.id) {
+      setEditLocationError("Sign in before uploading images.");
+      return;
+    }
+
+    const remainingSlots = MAX_LOCATION_IMAGES - editLocationImageUrls.length;
+    if (remainingSlots <= 0) {
+      setEditLocationError(`You can upload up to ${MAX_LOCATION_IMAGES} images.`);
+      return;
+    }
+
+    const imagesToUpload = images.slice(0, remainingSlots);
+    if (images.length > remainingSlots) {
+      setEditLocationError(`Only ${remainingSlots} more image(s) can be added.`);
+    } else {
+      setEditLocationError(null);
+    }
+
+    try {
+      setIsUploadingEditImages(true);
+
+      const uploadedUrls = await uploadLocationImages(imagesToUpload, user.id);
+      setEditLocationImageUrls((currentUrls) => [
+        ...currentUrls,
+        ...uploadedUrls,
+      ]);
+    } catch (err) {
+      console.error("Failed to upload edited location images:", err);
+      setEditLocationError(getApiErrorMessage(err));
+    } finally {
+      setIsUploadingEditImages(false);
+    }
+  }
+
+  function handleRemoveEditImage(imageUrl: string) {
+    setEditLocationImageUrls((currentUrls) =>
+      currentUrls.filter((currentUrl) => currentUrl !== imageUrl)
+    );
+  }
 
   async function handleCreateSpot() {
     if (!draftCoordinates) return;
@@ -193,16 +271,16 @@ export default function MapScreen() {
       setIsSavingSpot(true);
       setSaveError(null);
 
-            const createdLocation = await createLocation({
-                name: trimmedName,
-                description: newSpotDescription.trim() || undefined,
-                category: newSpotCategory,
-                tags: [],
-                imageUrls: newSpotImageUrls,
-                lat: draftCoordinates.lat,
-                lng: draftCoordinates.lng,
-                createdById: user.id,
-            });
+      const createdLocation = await createLocation({
+        name: trimmedName,
+        description: newSpotDescription.trim() || undefined,
+        category: newSpotCategory,
+        tags: [],
+        imageUrls: newSpotImageUrls,
+        lat: draftCoordinates.lat,
+        lng: draftCoordinates.lng,
+        createdById: user.id,
+      });
 
       setLocations((currentLocations) => [...currentLocations, createdLocation]);
       resetAddSpotForm();
@@ -212,6 +290,41 @@ export default function MapScreen() {
       setSaveError(getApiErrorMessage(err));
     } finally {
       setIsSavingSpot(false);
+    }
+  }
+
+  async function handleUpdateLocation() {
+    if (!editingLocation) return;
+
+    const trimmedName = editLocationName.trim();
+    if (!trimmedName) {
+      setEditLocationError("Add a name for this spot.");
+      return;
+    }
+
+    try {
+      setIsSavingEditLocation(true);
+      setEditLocationError(null);
+
+      const updatedLocation = await updateLocation(editingLocation.id, {
+        name: trimmedName,
+        description: editLocationDescription.trim(),
+        category: editLocationCategory,
+        imageUrls: editLocationImageUrls,
+      });
+
+      setLocations((currentLocations) =>
+        currentLocations.map((location) =>
+          location.id === updatedLocation.id ? updatedLocation : location
+        )
+      );
+      resetEditLocationForm();
+      setDetailsLocation(updatedLocation);
+    } catch (err) {
+      console.error("Failed to update location:", err);
+      setEditLocationError(getApiErrorMessage(err));
+    } finally {
+      setIsSavingEditLocation(false);
     }
   }
 
@@ -313,29 +426,51 @@ export default function MapScreen() {
           </Pressable>
         )}
 
-            <AddSpotSheet
-                coordinates={draftCoordinates}
-                categories={CATEGORIES}
-                name={newSpotName}
-                description={newSpotDescription}
-                category={newSpotCategory}
-                imageUrls={newSpotImageUrls}
-                isSaving={isSavingSpot}
-                isUploadingImages={isUploadingImages}
-                error={saveError}
-                onNameChange={setNewSpotName}
-                onDescriptionChange={setNewSpotDescription}
-                onCategoryChange={setNewSpotCategory}
-                onAddImages={handleAddImages}
-                onRemoveImage={handleRemoveImage}
-                onSubmit={handleCreateSpot}
-                onClose={resetAddSpotForm}
-            />
+        <AddSpotSheet
+          coordinates={draftCoordinates}
+          categories={CATEGORIES}
+          name={newSpotName}
+          description={newSpotDescription}
+          category={newSpotCategory}
+          imageUrls={newSpotImageUrls}
+          isSaving={isSavingSpot}
+          isUploadingImages={isUploadingImages}
+          error={saveError}
+          onNameChange={setNewSpotName}
+          onDescriptionChange={setNewSpotDescription}
+          onCategoryChange={setNewSpotCategory}
+          onAddImages={handleAddImages}
+          onRemoveImage={handleRemoveImage}
+          onSubmit={handleCreateSpot}
+          onClose={resetAddSpotForm}
+        />
 
         <LocationDetailsSheet
-          location={draftCoordinates ? null : detailsLocation}
-                canEditLocation={canEditDetailsLocation}
+          location={draftCoordinates || editingLocation ? null : detailsLocation}
+          canEditLocation={canEditDetailsLocation}
           onClose={() => setDetailsLocation(null)}
+          onEditPress={() => {
+            if (detailsLocation) startEditingLocation(detailsLocation);
+          }}
+        />
+
+        <EditLocationSheet
+          location={editingLocation}
+          categories={CATEGORIES}
+          name={editLocationName}
+          description={editLocationDescription}
+          category={editLocationCategory}
+          imageUrls={editLocationImageUrls}
+          isSaving={isSavingEditLocation}
+          isUploadingImages={isUploadingEditImages}
+          error={editLocationError}
+          onNameChange={setEditLocationName}
+          onDescriptionChange={setEditLocationDescription}
+          onCategoryChange={setEditLocationCategory}
+          onAddImages={handleAddEditImages}
+          onRemoveImage={handleRemoveEditImage}
+          onSubmit={handleUpdateLocation}
+          onClose={resetEditLocationForm}
         />
       </View>
     </View>

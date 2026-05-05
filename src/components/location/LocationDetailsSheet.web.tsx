@@ -5,12 +5,14 @@ type Props = {
   location: LocationResponse | null;
   canEditLocation?: boolean;
   onClose: () => void;
+  onEditPress?: () => void;
 };
 
 export default function LocationDetailsSheet({
   location,
   canEditLocation = false,
   onClose,
+  onEditPress,
 }: Props) {
   if (!location) return null;
 
@@ -137,6 +139,7 @@ export default function LocationDetailsSheet({
         >
           <button
             type="button"
+            onClick={onEditPress}
             style={{
               width: "100%",
               border: "none",
