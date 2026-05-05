@@ -1,4 +1,6 @@
+import * as ImagePicker from "expo-image-picker";
 import {
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -7,6 +9,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { MAX_LOCATION_IMAGES, SpotImageUpload } from "../../api/imageUploads";
 import type { LocationCategory } from "../../api/locations";
 
 type Coordinates = {
@@ -25,11 +28,15 @@ type Props = {
   name: string;
   description: string;
   category: LocationCategory;
+  imageUrls: string[];
   isSaving: boolean;
+  isUploadingImages: boolean;
   error: string | null;
   onNameChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onCategoryChange: (value: LocationCategory) => void;
+  onAddImages: (images: SpotImageUpload[]) => void;
+  onRemoveImage: (imageUrl: string) => void;
   onSubmit: () => void;
   onClose: () => void;
 };
@@ -40,14 +47,48 @@ export default function AddSpotSheet({
   name,
   description,
   category,
+  imageUrls,
   isSaving,
+  isUploadingImages,
   error,
   onNameChange,
   onDescriptionChange,
   onCategoryChange,
+  onAddImages,
+  onRemoveImage,
   onSubmit,
   onClose,
 }: Props) {
+  async function handlePickImages() {
+    const remainingSlots = MAX_LOCATION_IMAGES - imageUrls.length;
+    if (remainingSlots <= 0 || isUploadingImages) return;
+
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsMultipleSelection: true,
+      selectionLimit: remainingSlots,
+      quality: 0.85,
+    });
+
+    if (result.canceled) return;
+
+    onAddImages(
+      result.assets.map((asset, index) => ({
+        uri: asset.uri,
+        fileName:
+          asset.fileName ??
+          asset.uri.split("/").pop() ??
+          `location-image-${index}.jpg`,
+        mimeType: asset.mimeType ?? "image/jpeg",
+      }))
+    );
+  }
+
   return (
     <Modal
       visible={!!coordinates}
@@ -128,12 +169,48 @@ export default function AddSpotSheet({
               </Text>
             </View>
 
+            <Text style={styles.label}>Images</Text>
+            <Pressable
+              style={[
+                styles.uploadButton,
+                (imageUrls.length >= MAX_LOCATION_IMAGES || isUploadingImages) &&
+                styles.uploadButtonDisabled,
+              ]}
+              onPress={handlePickImages}
+              disabled={imageUrls.length >= MAX_LOCATION_IMAGES || isUploadingImages}
+            >
+              <Text style={styles.uploadButtonText}>
+                {isUploadingImages
+                  ? "Uploading..."
+                  : `Upload images (${imageUrls.length}/${MAX_LOCATION_IMAGES})`}
+              </Text>
+            </Pressable>
+
+            {imageUrls.length > 0 && (
+              <View style={styles.imageGrid}>
+                {imageUrls.map((imageUrl) => (
+                  <View key={imageUrl} style={styles.imagePreview}>
+                    <Image source={{ uri: imageUrl }} style={styles.previewImage} />
+                    <Pressable
+                      onPress={() => onRemoveImage(imageUrl)}
+                      style={styles.removeImageButton}
+                    >
+                      <Text style={styles.removeImageText}>x</Text>
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+            )}
+
             {error && <Text style={styles.error}>{error}</Text>}
 
             <Pressable
-              style={[styles.submitButton, isSaving && styles.submitButtonDisabled]}
+              style={[
+                styles.submitButton,
+                (isSaving || isUploadingImages) && styles.submitButtonDisabled,
+              ]}
               onPress={onSubmit}
-              disabled={isSaving}
+              disabled={isSaving || isUploadingImages}
             >
               <Text style={styles.submitButtonText}>
                 {isSaving ? "Saving..." : "Create spot"}
@@ -253,6 +330,59 @@ const styles = StyleSheet.create({
     color: "#374151",
     fontSize: 14,
     fontWeight: "600",
+  },
+  uploadButton: {
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: "#9ca3af",
+    borderRadius: 10,
+    backgroundColor: "#f9fafb",
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  uploadButtonDisabled: {
+    opacity: 0.6,
+  },
+  uploadButtonText: {
+    color: "#111827",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  imageGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 10,
+  },
+  imagePreview: {
+    position: "relative",
+    width: 76,
+    height: 76,
+    borderRadius: 10,
+    overflow: "hidden",
+    backgroundColor: "#e5e7eb",
+  },
+  previewImage: {
+    width: "100%",
+    height: "100%",
+  },
+  removeImageButton: {
+    position: "absolute",
+    top: 5,
+    right: 5,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(17,24,39,0.86)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  removeImageText: {
+    color: "white",
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: "800",
   },
   error: {
     marginTop: 12,

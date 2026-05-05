@@ -1,4 +1,5 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ChangeEvent } from "react";
+import { MAX_LOCATION_IMAGES, SpotImageUpload } from "../../api/imageUploads";
 import type { LocationCategory } from "../../api/locations";
 
 type Coordinates = {
@@ -17,11 +18,15 @@ type Props = {
   name: string;
   description: string;
   category: LocationCategory;
+  imageUrls: string[];
   isSaving: boolean;
+  isUploadingImages: boolean;
   error: string | null;
   onNameChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onCategoryChange: (value: LocationCategory) => void;
+  onAddImages: (images: SpotImageUpload[]) => void;
+  onRemoveImage: (imageUrl: string) => void;
   onSubmit: () => void;
   onClose: () => void;
 };
@@ -32,15 +37,37 @@ export default function AddSpotSheet({
   name,
   description,
   category,
+  imageUrls,
   isSaving,
+  isUploadingImages,
   error,
   onNameChange,
   onDescriptionChange,
   onCategoryChange,
+  onAddImages,
+  onRemoveImage,
   onSubmit,
   onClose,
 }: Props) {
   if (!coordinates) return null;
+
+  const canAddImages = imageUrls.length < MAX_LOCATION_IMAGES && !isUploadingImages;
+
+  function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+
+    if (files.length > 0) {
+      onAddImages(
+        files.map((file) => ({
+          file,
+          fileName: file.name,
+          mimeType: file.type || "image/jpeg",
+        }))
+      );
+    }
+
+    event.target.value = "";
+  }
 
   return (
     <aside style={styles.sheet} aria-label="Add spot form">
@@ -107,15 +134,53 @@ export default function AddSpotSheet({
         <span>Lng: {coordinates.lng.toFixed(6)}</span>
       </div>
 
+      <span style={styles.label}>Images</span>
+      <label
+        style={{
+          ...styles.uploadButton,
+          ...(!canAddImages ? styles.uploadButtonDisabled : null),
+        }}
+      >
+        {isUploadingImages
+          ? "Uploading..."
+          : `Upload images (${imageUrls.length}/${MAX_LOCATION_IMAGES})`}
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          disabled={!canAddImages}
+          onChange={handleImageChange}
+          style={styles.fileInput}
+        />
+      </label>
+
+      {imageUrls.length > 0 && (
+        <div style={styles.imageGrid}>
+          {imageUrls.map((imageUrl) => (
+            <div key={imageUrl} style={styles.imagePreview}>
+              <img src={imageUrl} alt="" style={styles.previewImage} />
+              <button
+                type="button"
+                onClick={() => onRemoveImage(imageUrl)}
+                style={styles.removeImageButton}
+                aria-label="Remove image"
+              >
+                x
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {error && <p style={styles.error}>{error}</p>}
 
       <button
         type="button"
         onClick={onSubmit}
-        disabled={isSaving}
+        disabled={isSaving || isUploadingImages}
         style={{
           ...styles.submitButton,
-          ...(isSaving ? styles.submitButtonDisabled : null),
+          ...(isSaving || isUploadingImages ? styles.submitButtonDisabled : null),
         }}
       >
         {isSaving ? "Saving..." : "Create spot"}
@@ -217,6 +282,69 @@ const styles: Record<string, CSSProperties> = {
     color: "#374151",
     fontSize: 14,
     fontWeight: 600,
+  },
+  uploadButton: {
+    position: "relative",
+    display: "flex",
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    border: "1px dashed #9ca3af",
+    borderRadius: 10,
+    backgroundColor: "#f9fafb",
+    color: "#111827",
+    padding: "12px 14px",
+    boxSizing: "border-box",
+    cursor: "pointer",
+    fontSize: 14,
+    fontWeight: 800,
+  },
+  uploadButtonDisabled: {
+    opacity: 0.6,
+    cursor: "default",
+  },
+  fileInput: {
+    position: "absolute",
+    inset: 0,
+    width: "100%",
+    height: "100%",
+    opacity: 0,
+    cursor: "pointer",
+  },
+  imageGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 8,
+    marginTop: 10,
+  },
+  imagePreview: {
+    position: "relative",
+    aspectRatio: "1 / 1",
+    overflow: "hidden",
+    borderRadius: 10,
+    backgroundColor: "#e5e7eb",
+  },
+  previewImage: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    display: "block",
+  },
+  removeImageButton: {
+    position: "absolute",
+    top: 5,
+    right: 5,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    border: "none",
+    backgroundColor: "rgba(17,24,39,0.86)",
+    color: "white",
+    cursor: "pointer",
+    fontSize: 14,
+    fontWeight: 800,
+    lineHeight: "24px",
+    padding: 0,
   },
   error: {
     marginTop: 12,
