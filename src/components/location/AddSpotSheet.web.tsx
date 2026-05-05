@@ -15,6 +15,10 @@ type CategoryOption = {
 type Props = {
   coordinates: Coordinates | null;
   categories: CategoryOption[];
+  title?: string;
+  ariaLabel?: string;
+  submitLabel?: string;
+  savingLabel?: string;
   name: string;
   description: string;
   category: LocationCategory;
@@ -34,6 +38,10 @@ type Props = {
 export default function AddSpotSheet({
   coordinates,
   categories,
+  title = "Add spot",
+  ariaLabel = "Add spot form",
+  submitLabel = "Create spot",
+  savingLabel = "Saving...",
   name,
   description,
   category,
@@ -70,9 +78,9 @@ export default function AddSpotSheet({
   }
 
   return (
-    <aside style={styles.sheet} aria-label="Add spot form">
+    <aside style={styles.sheet} aria-label={ariaLabel}>
       <div style={styles.header}>
-        <h2 style={styles.title}>Add spot</h2>
+        <h2 style={styles.title}>{title}</h2>
         <button onClick={onClose} style={styles.closeButton} aria-label="Close">
           x
         </button>
@@ -183,7 +191,7 @@ export default function AddSpotSheet({
           ...(isSaving || isUploadingImages ? styles.submitButtonDisabled : null),
         }}
       >
-        {isSaving ? "Saving..." : "Create spot"}
+        {isSaving ? savingLabel : submitLabel}
       </button>
     </aside>
   );

@@ -38,6 +38,13 @@ export type CreateLocationRequest = {
   createdById: string;
 };
 
+export type UpdateLocationRequest = Partial<
+  Pick<
+    CreateLocationRequest,
+    "name" | "description" | "category" | "tags" | "imageUrls" | "lat" | "lng"
+  >
+>;
+
 export function getApiErrorMessage(error: unknown) {
   if (!axios.isAxiosError(error)) {
     return error instanceof Error
@@ -78,6 +85,17 @@ export async function getLocations() {
 export async function createLocation(payload: CreateLocationRequest) {
   const res = await axios.post<LocationResponse>(
     `${API_BASE_URL}/locations`,
+    payload
+  );
+  return res.data;
+}
+
+export async function updateLocation(
+  locationId: string,
+  payload: UpdateLocationRequest
+) {
+  const res = await axios.patch<LocationResponse>(
+    `${API_BASE_URL}/locations/${locationId}`,
     payload
   );
   return res.data;
