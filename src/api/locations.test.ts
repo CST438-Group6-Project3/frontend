@@ -1,6 +1,7 @@
 import axios from "axios";
 import {
   createLocation,
+  deleteLocation,
   getApiErrorMessage,
   getLocations,
   updateLocation,
@@ -97,6 +98,15 @@ describe("locations api", () => {
     expect(mockedAxios.patch).toHaveBeenCalledWith(
       "http://localhost:8080/api/locations/location-1",
       payload
+    );
+  });
+
+  it("deletes an existing location", async () => {
+    mockedAxios.delete.mockResolvedValueOnce({});
+
+    await expect(deleteLocation("location-1")).resolves.toBeUndefined();
+    expect(mockedAxios.delete).toHaveBeenCalledWith(
+      "http://localhost:8080/api/locations/location-1"
     );
   });
 
