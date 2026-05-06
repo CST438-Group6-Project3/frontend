@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { StyleSheet, View } from "react-native";
+import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from "react-native";
 import MapView, { Circle, Marker, MapPressEvent, Region } from "react-native-maps";
 import type { LocationCategory, LocationResponse } from "../../api/locations";
 
@@ -36,6 +36,7 @@ type Props = {
     isPickingSearchCenter?: boolean;
     onMapPress?: (coordinates: { lat: number; lng: number }) => void;
     onCameraCenterChange?: (coordinates: { lat: number; lng: number }) => void;
+    onNativeSearchCenterConfirm?: (coordinates: { lat: number; lng: number }) => void;
     searchCenter?: { lat: number; lng: number } | null;
     searchRadiusMiles?: number;
 };
@@ -47,11 +48,27 @@ export default function HiddenGemsMap({
     isPickingSearchCenter = false,
     onMapPress,
     onCameraCenterChange,
+    onNativeSearchCenterConfirm,
     searchCenter,
     searchRadiusMiles,
 }: Props) {
     const mapRef = useRef<MapView | null>(null);
     const currentRegionRef = useRef(DEFAULT_US_REGION);
+    const mapSizeRef = useRef({ width: 0, height: 0 });
+
+    function reportCameraCenter(region: Region) {
+        currentRegionRef.current = region;
+        onCameraCenterChange?.({
+            lat: region.latitude,
+            lng: region.longitude,
+        });
+    }
+
+    useEffect(() => {
+        if (!isPickingSearchCenter) return;
+
+        reportCameraCenter(currentRegionRef.current);
+    }, [isPickingSearchCenter]);
 
     useEffect(() => {
         if (!searchCenter) return;
@@ -74,18 +91,56 @@ export default function HiddenGemsMap({
         );
     }, [searchCenter]);
 
+    function handleMapLayout(event: LayoutChangeEvent) {
+        const { width, height } = event.nativeEvent.layout;
+        mapSizeRef.current = { width, height };
+    }
+
+    async function confirmSearchCenterAtCrosshair() {
+        const { width, height } = mapSizeRef.current;
+
+        if (!width || !height) {
+            onNativeSearchCenterConfirm?.({
+                lat: currentRegionRef.current.latitude,
+                lng: currentRegionRef.current.longitude,
+            });
+            return;
+        }
+
+        try {
+            const coordinate = await mapRef.current?.coordinateForPoint({
+                x: width / 2,
+                y: height / 2,
+            });
+
+            if (!coordinate) return;
+
+            onNativeSearchCenterConfirm?.({
+                lat: coordinate.latitude,
+                lng: coordinate.longitude,
+            });
+        } catch (error) {
+            console.warn("Failed to read center coordinate from map", error);
+            onNativeSearchCenterConfirm?.({
+                lat: currentRegionRef.current.latitude,
+                lng: currentRegionRef.current.longitude,
+            });
+        }
+    }
+
     return (
-        <View style={styles.container}>
+        <View style={styles.container} onLayout={handleMapLayout}>
         <MapView
             ref={mapRef}
             style={styles.map}
             initialRegion={DEFAULT_US_REGION}
+            onRegionChange={(region: Region) => {
+                if (!isPickingSearchCenter) return;
+
+                reportCameraCenter(region);
+            }}
             onRegionChangeComplete={(region: Region) => {
-                currentRegionRef.current = region;
-                onCameraCenterChange?.({
-                    lat: region.latitude,
-                    lng: region.longitude,
-                });
+                reportCameraCenter(region);
             }}
             onPress={(event: MapPressEvent) => {
                 if (!isPickingLocation) return;
@@ -140,10 +195,20 @@ export default function HiddenGemsMap({
             )}
         </MapView>
             {isPickingSearchCenter && (
-                <View pointerEvents="none" style={styles.centerPickerCrosshair}>
-                    <View style={styles.centerPickerVertical} />
-                    <View style={styles.centerPickerHorizontal} />
-                </View>
+                <>
+                    <View pointerEvents="none" style={styles.centerPickerCrosshair}>
+                        <View style={styles.centerPickerVertical} />
+                        <View style={styles.centerPickerHorizontal} />
+                    </View>
+                    <Pressable
+                        style={styles.confirmSearchCenterButton}
+                        onPress={confirmSearchCenterAtCrosshair}
+                    >
+                        <Text style={styles.confirmSearchCenterButtonText}>
+                            Set center
+                        </Text>
+                    </Pressable>
+                </>
             )}
         </View>
     );
@@ -204,5 +269,26 @@ const styles = StyleSheet.create({
         height: 3,
         borderRadius: 999,
         backgroundColor: "rgba(17, 24, 39, 0.55)",
+    },
+    confirmSearchCenterButton: {
+        position: "absolute",
+        left: 18,
+        bottom: 28,
+        minHeight: 48,
+        borderRadius: 24,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "#2563eb",
+        paddingHorizontal: 18,
+        shadowColor: "#000",
+        shadowOpacity: 0.22,
+        shadowRadius: 8,
+        elevation: 6,
+        zIndex: 10000,
+    },
+    confirmSearchCenterButtonText: {
+        color: "white",
+        fontSize: 15,
+        fontWeight: "800",
     },
 });

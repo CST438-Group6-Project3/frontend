@@ -203,8 +203,6 @@ export default function MapScreen() {
   const [searchCenter, setSearchCenter] = useState<DraftSpotCoordinates | null>(
     null
   );
-  const [mapCameraCenter, setMapCameraCenter] =
-    useState<DraftSpotCoordinates | null>(null);
   const [searchRadiusMiles, setSearchRadiusMiles] = useState(MAX_RADIUS_MILES);
   const [draftCoordinates, setDraftCoordinates] =
     useState<DraftSpotCoordinates | null>(null);
@@ -364,10 +362,8 @@ export default function MapScreen() {
     setSaveError(null);
   }
 
-  function confirmNativeSearchCenter() {
-    if (!mapCameraCenter) return;
-
-    setSearchCenter(mapCameraCenter);
+  function confirmNativeSearchCenter(coordinates: DraftSpotCoordinates) {
+    setSearchCenter(coordinates);
     setIsPickingSearchCenter(false);
   }
 
@@ -610,8 +606,8 @@ export default function MapScreen() {
         onMarkerPress={handleMarkerPress}
         isPickingLocation={isPickingMapPoint}
         onMapPress={handleMapPress}
-        onCameraCenterChange={setMapCameraCenter}
         isPickingSearchCenter={isPickingSearchCenter}
+        onNativeSearchCenterConfirm={confirmNativeSearchCenter}
         searchCenter={searchCenter}
         searchRadiusMiles={searchRadiusMiles}
       />
@@ -819,20 +815,6 @@ export default function MapScreen() {
                 : "Move the map to choose a center"}
             </Text>
           </View>
-        )}
-
-        {isPickingSearchCenter && Platform.OS !== "web" && (
-          <Pressable
-            style={[
-              styles.confirmSearchCenterButton,
-              { bottom: addSpotButtonBottom },
-              !mapCameraCenter && styles.confirmSearchCenterButtonDisabled,
-            ]}
-            disabled={!mapCameraCenter}
-            onPress={confirmNativeSearchCenter}
-          >
-            <Text style={styles.confirmSearchCenterButtonText}>Set center</Text>
-          </Pressable>
         )}
 
         {selectedLocation && (
@@ -1208,30 +1190,6 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 14,
     fontWeight: "700",
-  },
-  confirmSearchCenterButton: {
-    position: "absolute",
-    left: 18,
-    bottom: 28,
-    minHeight: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#2563eb",
-    paddingHorizontal: 18,
-    shadowColor: "#000",
-    shadowOpacity: 0.22,
-    shadowRadius: 8,
-    elevation: 6,
-    zIndex: 10000,
-  },
-  confirmSearchCenterButtonDisabled: {
-    opacity: 0.55,
-  },
-  confirmSearchCenterButtonText: {
-    color: "white",
-    fontSize: 15,
-    fontWeight: "800",
   },
   avatarButton: {
     position: "absolute",

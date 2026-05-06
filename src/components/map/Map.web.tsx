@@ -30,6 +30,7 @@ type HiddenGemsMapProps = {
   isPickingSearchCenter?: boolean;
   onMapPress?: (coordinates: { lat: number; lng: number }) => void;
   onCameraCenterChange?: (coordinates: { lat: number; lng: number }) => void;
+  onNativeSearchCenterConfirm?: (coordinates: { lat: number; lng: number }) => void;
   searchCenter?: { lat: number; lng: number } | null;
   searchRadiusMiles?: number;
 };
@@ -174,6 +175,7 @@ export default function HiddenGemsMap({
   isPickingSearchCenter: _isPickingSearchCenter = false,
   onMapPress,
   onCameraCenterChange: _onCameraCenterChange,
+  onNativeSearchCenterConfirm: _onNativeSearchCenterConfirm,
   searchCenter,
   searchRadiusMiles,
 }: HiddenGemsMapProps) {
