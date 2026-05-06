@@ -46,6 +46,8 @@ const DEFAULT_US_CENTER: [number, number] = [39.8283, -98.5795];
 const DEFAULT_US_ZOOM = 4;
 const SEARCH_CENTER_VIEW_RADIUS_METERS = 100 * 1609.344;
 const METERS_PER_MILE = 1609.344;
+const LOCATION_MARKER_Z_INDEX_OFFSET = 1000;
+const SEARCH_CENTER_MARKER_Z_INDEX_OFFSET = 0;
 
 const searchCenterIcon = L.divIcon({
   className: "hidden-gems-search-center-icon",
@@ -120,6 +122,14 @@ function SearchCenterController({
     const bounds = L.latLng(searchCenter.lat, searchCenter.lng).toBounds(
       SEARCH_CENTER_VIEW_RADIUS_METERS * 2
     );
+    const targetZoom = map.getBoundsZoom(bounds, false, L.point(32, 32));
+
+    if (map.getZoom() > targetZoom) {
+      map.setView([searchCenter.lat, searchCenter.lng], map.getZoom(), {
+        animate: true,
+      });
+      return;
+    }
 
     map.fitBounds(bounds, {
       animate: true,
@@ -149,6 +159,7 @@ function SearchCenterController({
         position={[searchCenter.lat, searchCenter.lng]}
         icon={searchCenterIcon}
         interactive={false}
+        zIndexOffset={SEARCH_CENTER_MARKER_Z_INDEX_OFFSET}
       />
     </>
   );
@@ -243,6 +254,7 @@ export default function HiddenGemsMap({
         {locations.map((location) => (
           <Marker key={location.id}
             position={[location.lat, location.lng]}
+            zIndexOffset={LOCATION_MARKER_Z_INDEX_OFFSET}
             eventHandlers={{
               click: () => onMarkerPress(location),
             }}

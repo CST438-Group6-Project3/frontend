@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { StyleSheet, View } from "react-native";
-import MapView, { Circle, Marker, MapPressEvent } from "react-native-maps";
+import MapView, { Circle, Marker, MapPressEvent, Region } from "react-native-maps";
 import type { LocationResponse } from "../../api/locations";
 
 const DEFAULT_US_REGION = {
@@ -12,6 +12,8 @@ const DEFAULT_US_REGION = {
 const SEARCH_CENTER_VIEW_RADIUS_MILES = 100;
 const MILES_PER_LATITUDE_DEGREE = 69;
 const METERS_PER_MILE = 1609.344;
+const LOCATION_MARKER_Z_INDEX = 1000;
+const SEARCH_CENTER_MARKER_Z_INDEX = 1;
 
 type Props = {
     locations: LocationResponse[];
@@ -31,6 +33,7 @@ export default function HiddenGemsMap({
     searchRadiusMiles,
 }: Props) {
     const mapRef = useRef<MapView | null>(null);
+    const currentRegionRef = useRef(DEFAULT_US_REGION);
 
     useEffect(() => {
         if (!searchCenter) return;
@@ -40,13 +43,14 @@ export default function HiddenGemsMap({
         const latitudeRadians = (searchCenter.lat * Math.PI) / 180;
         const longitudeDelta =
             latitudeDelta / Math.max(Math.cos(latitudeRadians), 0.1);
+        const currentRegion = currentRegionRef.current;
 
         mapRef.current?.animateToRegion(
             {
                 latitude: searchCenter.lat,
                 longitude: searchCenter.lng,
-                latitudeDelta,
-                longitudeDelta,
+                latitudeDelta: Math.min(currentRegion.latitudeDelta, latitudeDelta),
+                longitudeDelta: Math.min(currentRegion.longitudeDelta, longitudeDelta),
             },
             350
         );
@@ -57,6 +61,9 @@ export default function HiddenGemsMap({
             ref={mapRef}
             style={{ flex: 1 }}
             initialRegion={DEFAULT_US_REGION}
+            onRegionChangeComplete={(region: Region) => {
+                currentRegionRef.current = region;
+            }}
             onPress={(event: MapPressEvent) => {
                 if (!isPickingLocation) return;
 
@@ -64,18 +71,20 @@ export default function HiddenGemsMap({
                 onMapPress?.({ lat: latitude, lng: longitude });
             }}
         >
-            {locations.map((location) => (
-                <Marker
-                    key={location.id}
-                    coordinate={{
-                        latitude: location.lat,
-                        longitude: location.lng,
-                    }}
-                    title={location.name}
-                    description={location.category}
-                    onPress={() => onMarkerPress(location)}
-                />
-            ))}
+            {!isPickingLocation &&
+                locations.map((location) => (
+                    <Marker
+                        key={location.id}
+                        coordinate={{
+                            latitude: location.lat,
+                            longitude: location.lng,
+                        }}
+                        title={location.name}
+                        description={location.category}
+                        zIndex={LOCATION_MARKER_Z_INDEX}
+                        onPress={() => onMarkerPress(location)}
+                    />
+                ))}
 
             {searchCenter && (
                 <>
@@ -97,9 +106,10 @@ export default function HiddenGemsMap({
                             longitude: searchCenter.lng,
                         }}
                         anchor={{ x: 0.5, y: 0.5 }}
-                        tracksViewChanges={false}
+                        zIndex={SEARCH_CENTER_MARKER_Z_INDEX}
+                        onPress={() => undefined}
                     >
-                        <View style={styles.searchCenterMarker}>
+                        <View pointerEvents="none" style={styles.searchCenterMarker}>
                             <View style={styles.searchCenterDot} />
                         </View>
                     </Marker>
