@@ -47,7 +47,6 @@ function getCategoryLabel(category: LocationCategory) {
 
 const ADD_SPOT_BUTTON_BOTTOM = 28;
 const ADD_SPOT_BUTTON_PREVIEW_BOTTOM = 144;
-const STUDY_FILTER: LocationCategory = "study_spot";
 
 type DraftSpotCoordinates = {
   lat: number;
@@ -102,7 +101,6 @@ export default function MapScreen() {
   const filteredLocations = activeCategoryFilter
     ? locations.filter((location) => location.category === activeCategoryFilter)
     : locations;
-  const isStudyFilterActive = activeCategoryFilter === STUDY_FILTER;
 
   useEffect(() => {
     async function loadLocations() {
@@ -489,32 +487,45 @@ export default function MapScreen() {
 
                   <Text style={styles.controlsSubtitle}>Filters</Text>
 
-                  <Pressable
-                    style={[
-                      styles.filterButton,
-                      isStudyFilterActive && styles.filterButtonActive,
-                    ]}
-                    onPress={() => {
-                      setActiveCategoryFilter((currentFilter) =>
-                        currentFilter === STUDY_FILTER ? null : STUDY_FILTER
+                  <View style={styles.filterGrid}>
+                    {CATEGORIES.map((category) => {
+                      const isActive = activeCategoryFilter === category.value;
+
+                      return (
+                        <Pressable
+                          key={category.value}
+                          style={[
+                            styles.filterButton,
+                            isActive && styles.filterButtonActive,
+                          ]}
+                          onPress={() => {
+                            setActiveCategoryFilter((currentFilter) =>
+                              currentFilter === category.value
+                                ? null
+                                : category.value
+                            );
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.filterButtonText,
+                              isActive && styles.filterButtonTextActive,
+                            ]}
+                          >
+                            {category.label}
+                          </Text>
+                        </Pressable>
                       );
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.filterButtonText,
-                        isStudyFilterActive && styles.filterButtonTextActive,
-                      ]}
-                    >
-                      Study
-                    </Text>
-                  </Pressable>
+                    })}
+                  </View>
 
                   <View style={styles.controlsDivider} />
 
                   <Text style={styles.controlsHint}>
-                    {isStudyFilterActive
-                      ? `Showing ${filteredLocations.length} Study ${
+                    {activeCategoryFilter
+                      ? `Showing ${filteredLocations.length} ${getCategoryLabel(
+                          activeCategoryFilter
+                        )} ${
                           filteredLocations.length === 1 ? "location" : "locations"
                         }.`
                       : "Choose a category to filter the map markers."}
@@ -759,9 +770,14 @@ export default function MapScreen() {
       fontSize: 14,
       lineHeight: 20,
   },
+      filterGrid: {
+        flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 14,
+  },
       filterButton: {
-        alignSelf: "flex-start",
-      borderWidth: 1,
+        borderWidth: 1,
       borderColor: "#d1d5db",
       borderRadius: 999,
       backgroundColor: "white",
