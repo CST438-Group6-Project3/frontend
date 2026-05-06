@@ -10,6 +10,7 @@ import {
   Image,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import axios from "axios";
 import { supabase } from "../lib/supabaseClient";
 import type { LocationResponse } from "../src/api/locations";
@@ -28,6 +29,7 @@ type LocationStatus = "pending" | "verified" | "archived";
 
 export default function Admin() {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
 
   const [users, setUsers] = useState<User[]>([]);
   const [locations, setLocations] = useState<LocationResponse[]>([]);
@@ -168,7 +170,13 @@ export default function Admin() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[
+        styles.content,
+        { paddingTop: Math.max(16, insets.top + 12) },
+      ]}
+    >
       {/* BACK BUTTON */}
       <Pressable
         onPress={() => navigation.goBack()}
@@ -276,7 +284,8 @@ export default function Admin() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16 },
+  container: { flex: 1 },
+  content: { padding: 16 },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
 
   backButton: { marginBottom: 10 },
