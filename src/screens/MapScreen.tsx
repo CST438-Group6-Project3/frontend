@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Modal,
   Pressable,
   StyleSheet,
   Text,
@@ -46,6 +47,7 @@ function getCategoryLabel(category: LocationCategory) {
 
 const ADD_SPOT_BUTTON_BOTTOM = 28;
 const ADD_SPOT_BUTTON_PREVIEW_BOTTOM = 144;
+const STUDY_FILTER: LocationCategory = "study_spot";
 
 type DraftSpotCoordinates = {
   lat: number;
@@ -73,6 +75,9 @@ export default function MapScreen() {
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [controlsOpen, setControlsOpen] = useState(false);
+  const [activeCategoryFilter, setActiveCategoryFilter] =
+    useState<LocationCategory | null>(null);
   const [editingLocation, setEditingLocation] =
     useState<LocationResponse | null>(null);
   const [editLocationName, setEditLocationName] = useState("");
@@ -94,6 +99,10 @@ export default function MapScreen() {
   const addSpotButtonBottom = selectedLocation
     ? ADD_SPOT_BUTTON_PREVIEW_BOTTOM
     : ADD_SPOT_BUTTON_BOTTOM;
+  const filteredLocations = activeCategoryFilter
+    ? locations.filter((location) => location.category === activeCategoryFilter)
+    : locations;
+  const isStudyFilterActive = activeCategoryFilter === STUDY_FILTER;
 
   useEffect(() => {
     async function loadLocations() {
@@ -116,8 +125,19 @@ export default function MapScreen() {
   useEffect(() => {
     if (isLocationSheetOpen) {
       setDropdownOpen(false);
+      setControlsOpen(false);
     }
   }, [isLocationSheetOpen]);
+
+  useEffect(() => {
+    if (
+      activeCategoryFilter &&
+      selectedLocation &&
+      selectedLocation?.category !== activeCategoryFilter
+    ) {
+      setSelectedLocation(null);
+    }
+  }, [activeCategoryFilter, selectedLocation]);
 
   function handleMarkerPress(location: LocationResponse) {
     setDropdownOpen(false);
@@ -143,6 +163,7 @@ export default function MapScreen() {
   }
 
     function startPickingLocation() {
+        setControlsOpen(false);
         setSelectedLocation(null);
         setDetailsLocation(null);
         setDraftCoordinates(null);
@@ -395,7 +416,7 @@ export default function MapScreen() {
   return (
     <View style={styles.container}>
       <HiddenGemsMap
-        locations={locations}
+        locations={filteredLocations}
         onMarkerPress={handleMarkerPress}
         isPickingLocation={isPickingLocation}
         onMapPress={handleMapPress}
@@ -406,9 +427,25 @@ export default function MapScreen() {
         {!isLocationSheetOpen && (
           <>
             <Pressable
+              style={styles.controlsButton}
+              pointerEvents="auto"
+              onPress={() => {
+                setDropdownOpen(false);
+                setControlsOpen(true);
+              }}
+            >
+              <View style={styles.hamburgerLine} />
+              <View style={styles.hamburgerLine} />
+              <View style={styles.hamburgerLine} />
+            </Pressable>
+
+            <Pressable
               style={styles.avatarButton}
               pointerEvents="auto"
-              onPress={() => setDropdownOpen((prev) => !prev)}
+              onPress={() => {
+                setControlsOpen(false);
+                setDropdownOpen((prev) => !prev);
+              }}
             >
               <Image
                 source={
@@ -426,6 +463,65 @@ export default function MapScreen() {
                 onClose={() => setDropdownOpen(false)}
               />
             </View>
+
+            <Modal
+              visible={controlsOpen}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setControlsOpen(false)}
+            >
+              <View style={styles.controlsModalLayer}>
+                <Pressable
+                  style={styles.controlsBackdrop}
+                  onPress={() => setControlsOpen(false)}
+                />
+
+                <View style={styles.controlsPanel}>
+                  <View style={styles.controlsHeader}>
+                    <Text style={styles.controlsTitle}>Controls</Text>
+                    <Pressable
+                      style={styles.controlsCloseButton}
+                      onPress={() => setControlsOpen(false)}
+                    >
+                      <Text style={styles.controlsCloseText}>x</Text>
+                    </Pressable>
+                  </View>
+
+                  <Text style={styles.controlsSubtitle}>Filters</Text>
+
+                  <Pressable
+                    style={[
+                      styles.filterButton,
+                      isStudyFilterActive && styles.filterButtonActive,
+                    ]}
+                    onPress={() => {
+                      setActiveCategoryFilter((currentFilter) =>
+                        currentFilter === STUDY_FILTER ? null : STUDY_FILTER
+                      );
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.filterButtonText,
+                        isStudyFilterActive && styles.filterButtonTextActive,
+                      ]}
+                    >
+                      Study
+                    </Text>
+                  </Pressable>
+
+                  <View style={styles.controlsDivider} />
+
+                  <Text style={styles.controlsHint}>
+                    {isStudyFilterActive
+                      ? `Showing ${filteredLocations.length} Study ${
+                          filteredLocations.length === 1 ? "location" : "locations"
+                        }.`
+                      : "Choose a category to filter the map markers."}
+                  </Text>
+                </View>
+              </View>
+            </Modal>
           </>
         )}
 
@@ -561,6 +657,139 @@ export default function MapScreen() {
       error: {
         fontSize: 16,
       color: "red",
+  },
+      controlsButton: {
+        position: "absolute",
+      top: 15,
+      left: 20,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "white",
+      shadowColor: "#000",
+      shadowOpacity: 0.2,
+      shadowRadius: 6,
+      elevation: 6,
+      zIndex: 10001,
+  },
+      hamburgerLine: {
+        width: 20,
+      height: 2,
+      borderRadius: 999,
+      backgroundColor: "#111827",
+      marginVertical: 2,
+  },
+      controlsModalLayer: {
+        flex: 1,
+  },
+      controlsBackdrop: {
+        ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(17,24,39,0.18)",
+  },
+      controlsPanel: {
+        position: "absolute",
+      top: 72,
+      left: 16,
+      right: 16,
+      width: "auto",
+      maxWidth: 460,
+      minHeight: 360,
+      borderRadius: 14,
+      backgroundColor: "white",
+      padding: 20,
+      shadowColor: "#000",
+      shadowOpacity: 0.24,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 12,
+  },
+      controlsHeader: {
+        flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 12,
+  },
+      controlsTitle: {
+        color: "#111827",
+      fontSize: 24,
+      fontWeight: "800",
+  },
+      controlsCloseButton: {
+        width: 34,
+      height: 34,
+      borderRadius: 17,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "#f3f4f6",
+  },
+      controlsCloseText: {
+        color: "#111827",
+      fontSize: 18,
+      fontWeight: "800",
+      lineHeight: 20,
+  },
+      controlsSubtitle: {
+        color: "#6b7280",
+      fontSize: 13,
+      fontWeight: "800",
+      textTransform: "uppercase",
+      marginBottom: 10,
+  },
+      controlsAction: {
+        borderWidth: 1,
+      borderColor: "#e5e7eb",
+      borderRadius: 10,
+      backgroundColor: "#ffffff",
+      padding: 14,
+      marginBottom: 10,
+  },
+      controlsActionDisabled: {
+        opacity: 0.45,
+  },
+      controlsActionTitle: {
+        color: "#111827",
+      fontSize: 16,
+      fontWeight: "800",
+      marginBottom: 4,
+  },
+      controlsActionText: {
+        color: "#4b5563",
+      fontSize: 14,
+      lineHeight: 20,
+  },
+      filterButton: {
+        alignSelf: "flex-start",
+      borderWidth: 1,
+      borderColor: "#d1d5db",
+      borderRadius: 999,
+      backgroundColor: "white",
+      paddingHorizontal: 18,
+      paddingVertical: 10,
+      marginBottom: 14,
+  },
+      filterButtonActive: {
+        borderColor: "#2563eb",
+      backgroundColor: "#2563eb",
+  },
+      filterButtonText: {
+        color: "#111827",
+      fontSize: 15,
+      fontWeight: "800",
+  },
+      filterButtonTextActive: {
+        color: "white",
+  },
+      controlsDivider: {
+        height: 1,
+      backgroundColor: "#e5e7eb",
+      marginVertical: 8,
+  },
+      controlsHint: {
+        color: "#4b5563",
+      fontSize: 14,
+      lineHeight: 20,
   },
       addSpotButton: {
         position: "absolute",
