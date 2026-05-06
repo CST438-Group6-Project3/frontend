@@ -130,34 +130,34 @@ export default function MapScreen() {
     }
   }
 
-  function startPickingLocation() {
-    setSelectedLocation(null);
-    setDetailsLocation(null);
-    setDraftCoordinates(null);
-    setSaveError(null);
-    setIsPickingLocation(true);
-  }
+    function startPickingLocation() {
+        setSelectedLocation(null);
+        setDetailsLocation(null);
+        setDraftCoordinates(null);
+        setSaveError(null);
+        setIsPickingLocation(true);
+    }
 
-  function handleMapPress(coordinates: DraftSpotCoordinates) {
-    if (!isPickingLocation) return;
+    function handleMapPress(coordinates: DraftSpotCoordinates) {
+        if (!isPickingLocation) return;
 
-    setDetailsLocation(null);
-    setSelectedLocation(null);
-    setDraftCoordinates(coordinates);
-    setIsPickingLocation(false);
-    setSaveError(null);
-  }
+        setDetailsLocation(null);
+        setSelectedLocation(null);
+        setDraftCoordinates(coordinates);
+        setIsPickingLocation(false);
+        setSaveError(null);
+    }
 
-  function resetAddSpotForm() {
-    setDraftCoordinates(null);
-    setNewSpotName("");
-    setNewSpotDescription("");
-    setNewSpotCategory("study_spot");
-    setNewSpotImageUrls([]);
-    setSaveError(null);
-    setIsSavingSpot(false);
-    setIsUploadingImages(false);
-  }
+    function resetAddSpotForm() {
+        setDraftCoordinates(null);
+        setNewSpotName("");
+        setNewSpotDescription("");
+        setNewSpotCategory("study_spot");
+        setNewSpotImageUrls([]);
+        setSaveError(null);
+        setIsSavingSpot(false);
+        setIsUploadingImages(false);
+    }
 
     function startEditingLocation(location: LocationResponse) {
         setEditingLocation(location);
@@ -174,155 +174,155 @@ export default function MapScreen() {
         setDeleteLocationError(null);
     }
 
-  function resetEditLocationForm() {
-    setEditingLocation(null);
-    setEditLocationName("");
-    setEditLocationDescription("");
-    setEditLocationCategory("study_spot");
-    setEditLocationImageUrls([]);
-    setEditLocationError(null);
-    setIsSavingEditLocation(false);
-    setIsUploadingEditImages(false);
-  }
-
-  async function handleAddImages(images: SpotImageUpload[]) {
-    if (!user?.id) {
-      setSaveError("Sign in before uploading images.");
-      return;
+    function resetEditLocationForm() {
+        setEditingLocation(null);
+        setEditLocationName("");
+        setEditLocationDescription("");
+        setEditLocationCategory("study_spot");
+        setEditLocationImageUrls([]);
+        setEditLocationError(null);
+        setIsSavingEditLocation(false);
+        setIsUploadingEditImages(false);
     }
 
-    const remainingSlots = MAX_LOCATION_IMAGES - newSpotImageUrls.length;
-    if (remainingSlots <= 0) {
-      setSaveError(`You can upload up to ${MAX_LOCATION_IMAGES} images.`);
-      return;
+    async function handleAddImages(images: SpotImageUpload[]) {
+        if (!user?.id) {
+            setSaveError("Sign in before uploading images.");
+            return;
+        }
+
+        const remainingSlots = MAX_LOCATION_IMAGES - newSpotImageUrls.length;
+        if (remainingSlots <= 0) {
+            setSaveError(`You can upload up to ${MAX_LOCATION_IMAGES} images.`);
+            return;
+        }
+
+        const imagesToUpload = images.slice(0, remainingSlots);
+        if (images.length > remainingSlots) {
+            setSaveError(`Only ${remainingSlots} more image(s) can be added.`);
+        } else {
+            setSaveError(null);
+        }
+
+        try {
+            setIsUploadingImages(true);
+
+            const uploadedUrls = await uploadLocationImages(imagesToUpload, user.id);
+            setNewSpotImageUrls((currentUrls) => [...currentUrls, ...uploadedUrls]);
+        } catch (err) {
+            console.error("Failed to upload location images:", err);
+            setSaveError(getApiErrorMessage(err));
+        } finally {
+            setIsUploadingImages(false);
+        }
     }
 
-    const imagesToUpload = images.slice(0, remainingSlots);
-    if (images.length > remainingSlots) {
-      setSaveError(`Only ${remainingSlots} more image(s) can be added.`);
-    } else {
-      setSaveError(null);
+    function handleRemoveImage(imageUrl: string) {
+        setNewSpotImageUrls((currentUrls) =>
+            currentUrls.filter((currentUrl) => currentUrl !== imageUrl)
+        );
     }
 
-    try {
-      setIsUploadingImages(true);
+    async function handleAddEditImages(images: SpotImageUpload[]) {
+        if (!user?.id) {
+            setEditLocationError("Sign in before uploading images.");
+            return;
+        }
 
-      const uploadedUrls = await uploadLocationImages(imagesToUpload, user.id);
-      setNewSpotImageUrls((currentUrls) => [...currentUrls, ...uploadedUrls]);
-    } catch (err) {
-      console.error("Failed to upload location images:", err);
-      setSaveError(getApiErrorMessage(err));
-    } finally {
-      setIsUploadingImages(false);
-    }
-  }
+        const remainingSlots = MAX_LOCATION_IMAGES - editLocationImageUrls.length;
+        if (remainingSlots <= 0) {
+            setEditLocationError(`You can upload up to ${MAX_LOCATION_IMAGES} images.`);
+            return;
+        }
 
-  function handleRemoveImage(imageUrl: string) {
-    setNewSpotImageUrls((currentUrls) =>
-      currentUrls.filter((currentUrl) => currentUrl !== imageUrl)
-    );
-  }
+        const imagesToUpload = images.slice(0, remainingSlots);
+        if (images.length > remainingSlots) {
+            setEditLocationError(`Only ${remainingSlots} more image(s) can be added.`);
+        } else {
+            setEditLocationError(null);
+        }
 
-  async function handleAddEditImages(images: SpotImageUpload[]) {
-    if (!user?.id) {
-      setEditLocationError("Sign in before uploading images.");
-      return;
-    }
+        try {
+            setIsUploadingEditImages(true);
 
-    const remainingSlots = MAX_LOCATION_IMAGES - editLocationImageUrls.length;
-    if (remainingSlots <= 0) {
-      setEditLocationError(`You can upload up to ${MAX_LOCATION_IMAGES} images.`);
-      return;
-    }
-
-    const imagesToUpload = images.slice(0, remainingSlots);
-    if (images.length > remainingSlots) {
-      setEditLocationError(`Only ${remainingSlots} more image(s) can be added.`);
-    } else {
-      setEditLocationError(null);
+            const uploadedUrls = await uploadLocationImages(imagesToUpload, user.id);
+            setEditLocationImageUrls((currentUrls) => [
+                ...currentUrls,
+                ...uploadedUrls,
+            ]);
+        } catch (err) {
+            console.error("Failed to upload edited location images:", err);
+            setEditLocationError(getApiErrorMessage(err));
+        } finally {
+            setIsUploadingEditImages(false);
+        }
     }
 
-    try {
-      setIsUploadingEditImages(true);
-
-      const uploadedUrls = await uploadLocationImages(imagesToUpload, user.id);
-      setEditLocationImageUrls((currentUrls) => [
-        ...currentUrls,
-        ...uploadedUrls,
-      ]);
-    } catch (err) {
-      console.error("Failed to upload edited location images:", err);
-      setEditLocationError(getApiErrorMessage(err));
-    } finally {
-      setIsUploadingEditImages(false);
-    }
-  }
-
-  function handleRemoveEditImage(imageUrl: string) {
-    setEditLocationImageUrls((currentUrls) =>
-      currentUrls.filter((currentUrl) => currentUrl !== imageUrl)
-    );
-  }
-
-  async function handleCreateSpot() {
-    if (!draftCoordinates) return;
-
-    const trimmedName = newSpotName.trim();
-    if (!trimmedName) {
-      setSaveError("Add a name for this spot.");
-      return;
+    function handleRemoveEditImage(imageUrl: string) {
+        setEditLocationImageUrls((currentUrls) =>
+            currentUrls.filter((currentUrl) => currentUrl !== imageUrl)
+        );
     }
 
-    if (!user?.id) {
-      setSaveError("Sign in before adding a spot.");
-      return;
+    async function handleCreateSpot() {
+        if (!draftCoordinates) return;
+
+        const trimmedName = newSpotName.trim();
+        if (!trimmedName) {
+            setSaveError("Add a name for this spot.");
+            return;
+        }
+
+        if (!user?.id) {
+            setSaveError("Sign in before adding a spot.");
+            return;
+        }
+
+        try {
+            setIsSavingSpot(true);
+            setSaveError(null);
+
+            const createdLocation = await createLocation({
+                name: trimmedName,
+                description: newSpotDescription.trim() || undefined,
+                category: newSpotCategory,
+                tags: [],
+                imageUrls: newSpotImageUrls,
+                lat: draftCoordinates.lat,
+                lng: draftCoordinates.lng,
+                createdById: user.id,
+            });
+
+            setLocations((currentLocations) => [...currentLocations, createdLocation]);
+            resetAddSpotForm();
+            setDetailsLocation(createdLocation);
+        } catch (err) {
+            console.error("Failed to create location:", err);
+            setSaveError(getApiErrorMessage(err));
+        } finally {
+            setIsSavingSpot(false);
+        }
     }
 
-    try {
-      setIsSavingSpot(true);
-      setSaveError(null);
+    async function handleUpdateLocation() {
+        if (!editingLocation) return;
 
-      const createdLocation = await createLocation({
-        name: trimmedName,
-        description: newSpotDescription.trim() || undefined,
-        category: newSpotCategory,
-        tags: [],
-        imageUrls: newSpotImageUrls,
-        lat: draftCoordinates.lat,
-        lng: draftCoordinates.lng,
-        createdById: user.id,
-      });
+        const trimmedName = editLocationName.trim();
+        if (!trimmedName) {
+            setEditLocationError("Add a name for this spot.");
+            return;
+        }
 
-      setLocations((currentLocations) => [...currentLocations, createdLocation]);
-      resetAddSpotForm();
-      setDetailsLocation(createdLocation);
-    } catch (err) {
-      console.error("Failed to create location:", err);
-      setSaveError(getApiErrorMessage(err));
-    } finally {
-      setIsSavingSpot(false);
-    }
-  }
+        try {
+            setIsSavingEditLocation(true);
+            setEditLocationError(null);
 
-  async function handleUpdateLocation() {
-    if (!editingLocation) return;
-
-    const trimmedName = editLocationName.trim();
-    if (!trimmedName) {
-      setEditLocationError("Add a name for this spot.");
-      return;
-    }
-
-    try {
-      setIsSavingEditLocation(true);
-      setEditLocationError(null);
-
-      const updatedLocation = await updateLocation(editingLocation.id, {
-        name: trimmedName,
-        description: editLocationDescription.trim(),
-        category: editLocationCategory,
-        imageUrls: editLocationImageUrls,
-      });
+            const updatedLocation = await updateLocation(editingLocation.id, {
+                name: trimmedName,
+                description: editLocationDescription.trim(),
+                category: editLocationCategory,
+                imageUrls: editLocationImageUrls,
+            });
 
             setLocations((currentLocations) =>
                 currentLocations.map((location) =>
@@ -622,15 +622,15 @@ export default function MapScreen() {
 
       previewContent: {
         flexDirection: "row",
-      alignItems: "center", // 👈 key fix
-      justifyContent: "space-between",
-  },
+        alignItems: "center", // 👈 key fix
+        justifyContent: "space-between",
+    },
 
-      previewTextContainer: {
+    previewTextContainer: {
         flex: 1,
-  },
+    },
 
-      chevron: {
+    chevron: {
         fontSize: 28,
       fontWeight: "700",
       color: "#6b7280",
@@ -642,20 +642,20 @@ export default function MapScreen() {
   },
       previewText: {
         fontSize: 14,
-      marginTop: 4,
-  },
-      closeButton: {
+        marginTop: 4,
+    },
+    closeButton: {
         position: "absolute",
-      top: 10,
-      right: 14,
-      fontSize: 20,
-      fontWeight: "700",
-      zIndex: 10000,
-  },
-      detailsButton: {
+        top: 10,
+        right: 14,
+        fontSize: 20,
+        fontWeight: "700",
+        zIndex: 10000,
+    },
+    detailsButton: {
         marginTop: 12,
-      fontSize: 16,
-      fontWeight: "700",
-      color: "#2563eb",
-  },
+        fontSize: 16,
+        fontWeight: "700",
+        color: "#2563eb",
+    },
 });
