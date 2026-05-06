@@ -13,9 +13,11 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../auth/AuthProvider';
+import { useNavigation } from '@react-navigation/native';
 
 export default function ProfileScreen() {
   const { user, session } = useAuth();
+  const navigation = useNavigation();
 
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -64,7 +66,6 @@ export default function ProfileScreen() {
       let fileData;
       const fileName = `${session?.user.id}-${Date.now()}.jpg`;
 
-      // Convert file
       if (Platform.OS === 'web') {
         fileData = fileOrUri;
       } else {
@@ -140,13 +141,21 @@ export default function ProfileScreen() {
 
   return (
     <View style={{ flex: 1, padding: 20, maxWidth: 500, alignSelf: 'center' }}>
-      <Text style={{ fontSize: 24, marginBottom: 20 }}>Profile</Text>
+      
+      {/* Header with Back Button */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={{ fontSize: 20, marginRight: 10 }}>←</Text>
+        </TouchableOpacity>
+        <Text style={{ fontSize: 24 }}>Profile</Text>
+      </View>
 
+      {/* Avatar */}
       <TouchableOpacity onPress={pickImage}>
         <Image
           source={
             avatar
-              ? { uri: avatar + '?t=' + Date.now() } // cache bust
+              ? { uri: avatar + '?t=' + Date.now() }
               : require('../../assets/default-avatar.png')
           }
           style={{
@@ -154,11 +163,13 @@ export default function ProfileScreen() {
             height: 120,
             borderRadius: 60,
             marginBottom: 10,
+            alignSelf: 'center',
           }}
         />
         <Text style={{ textAlign: 'center' }}>Change Profile Picture</Text>
       </TouchableOpacity>
 
+      {/* Username */}
       <Text style={{ marginTop: 20 }}>Username</Text>
       <TextInput
         value={name}
@@ -172,6 +183,7 @@ export default function ProfileScreen() {
         }}
       />
 
+      {/* Save Button */}
       {loading ? (
         <ActivityIndicator />
       ) : (
