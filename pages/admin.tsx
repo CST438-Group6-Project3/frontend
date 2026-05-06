@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
@@ -183,15 +184,20 @@ export default function Admin() {
       {users.map((user) => (
         <View key={user.id} style={styles.card}>
           <View style={styles.row}>
-            {user.avatarUrl ? (
-              <img src={user.avatarUrl} style={styles.avatar as any} />
-            ) : (
-              <View style={styles.avatarFallback}>
-                <Text style={styles.avatarText}>
-                  {user.email[0].toUpperCase()}
-                </Text>
-              </View>
-            )}
+            {
+              user.avatarUrl ? (
+                <Image
+                  source={{ uri: user.avatarUrl }}
+                  style={styles.avatar}
+                />
+              ) : (
+                <View style={styles.avatarFallback}>
+                  <Text style={styles.avatarText}>
+                    {user.email[0].toUpperCase()}
+                  </Text>
+                </View>
+              )
+            }
 
             <View style={{ flex: 1 }}>
               <Text style={styles.email}>{user.email}</Text>
