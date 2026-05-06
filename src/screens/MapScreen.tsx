@@ -95,17 +95,37 @@ function getDistanceMiles(
 }
 
 function RadiusSlider({ value, onChange }: RadiusSliderProps) {
-  const [trackWidth, setTrackWidth] = useState(0);
+  const trackRef = React.useRef<View | null>(null);
+  const trackPageXRef = React.useRef(0);
+  const trackWidthRef = React.useRef(0);
   const progress =
     (value - MIN_RADIUS_MILES) / (MAX_RADIUS_MILES - MIN_RADIUS_MILES);
 
-  function updateValueFromX(x: number) {
-    if (!trackWidth) return;
+  function measureTrack(pageX?: number) {
+    trackRef.current?.measureInWindow((x, _y, width) => {
+      trackPageXRef.current = x;
+      trackWidthRef.current = width;
 
-    const clampedX = Math.max(0, Math.min(x, trackWidth));
+      if (pageX != null) {
+        updateValueFromPageX(pageX, x, width);
+      }
+    });
+  }
+
+  function updateValueFromPageX(
+    pageX: number,
+    measuredTrackPageX = trackPageXRef.current,
+    measuredTrackWidth = trackWidthRef.current
+  ) {
+    if (!measuredTrackWidth) return;
+
+    const clampedX = Math.max(
+      0,
+      Math.min(pageX - measuredTrackPageX, measuredTrackWidth)
+    );
     const rawValue =
       MIN_RADIUS_MILES +
-      (clampedX / trackWidth) * (MAX_RADIUS_MILES - MIN_RADIUS_MILES);
+      (clampedX / measuredTrackWidth) * (MAX_RADIUS_MILES - MIN_RADIUS_MILES);
     const steppedValue =
       Math.round(rawValue / RADIUS_STEP_MILES) * RADIUS_STEP_MILES;
 
@@ -117,14 +137,16 @@ function RadiusSlider({ value, onChange }: RadiusSliderProps) {
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponderCapture: () => true,
+        onMoveShouldSetPanResponderCapture: () => true,
         onPanResponderGrant: (event: GestureResponderEvent) => {
-          updateValueFromX(event.nativeEvent.locationX);
+          measureTrack(event.nativeEvent.pageX);
         },
         onPanResponderMove: (event: GestureResponderEvent) => {
-          updateValueFromX(event.nativeEvent.locationX);
+          updateValueFromPageX(event.nativeEvent.pageX);
         },
       }),
-    [trackWidth]
+    []
   );
 
   return (
@@ -136,8 +158,11 @@ function RadiusSlider({ value, onChange }: RadiusSliderProps) {
       </View>
 
       <View
+        ref={trackRef}
         style={styles.radiusSliderTrack}
-        onLayout={(event) => setTrackWidth(event.nativeEvent.layout.width)}
+        onLayout={() => {
+          requestAnimationFrame(measureTrack);
+        }}
         {...panResponder.panHandlers}
       >
         <View style={styles.radiusSliderRail} />
@@ -263,7 +288,14 @@ export default function MapScreen() {
 
   function handleMarkerPress(location: LocationResponse) {
     setDropdownOpen(false);
-    if (isPickingMapPoint) return;
+
+    if (isPickingSearchCenter) {
+      setSearchCenter({ lat: location.lat, lng: location.lng });
+      setIsPickingSearchCenter(false);
+      return;
+    }
+
+    if (isPickingLocation) return;
 
     if (draftCoordinates) {
       resetAddSpotForm();
@@ -559,6 +591,7 @@ export default function MapScreen() {
         isPickingLocation={isPickingMapPoint}
         onMapPress={handleMapPress}
         searchCenter={searchCenter}
+        searchRadiusMiles={searchRadiusMiles}
       />
 
       <View style={styles.overlayContainer} pointerEvents="box-none">

@@ -1,6 +1,7 @@
 import "leaflet/dist/leaflet.css";
 import React, { useEffect, useState } from "react";
 import {
+  Circle,
   MapContainer,
   Marker,
   TileLayer,
@@ -28,6 +29,7 @@ type HiddenGemsMapProps = {
   isPickingLocation?: boolean;
   onMapPress?: (coordinates: { lat: number; lng: number }) => void;
   searchCenter?: { lat: number; lng: number } | null;
+  searchRadiusMiles?: number;
 };
 
 type HoverCoordinates = {
@@ -43,6 +45,7 @@ const addSpotCursor =
 const DEFAULT_US_CENTER: [number, number] = [39.8283, -98.5795];
 const DEFAULT_US_ZOOM = 4;
 const SEARCH_CENTER_VIEW_RADIUS_METERS = 100 * 1609.344;
+const METERS_PER_MILE = 1609.344;
 
 const searchCenterIcon = L.divIcon({
   className: "hidden-gems-search-center-icon",
@@ -104,8 +107,10 @@ function MapClickHandler({
 
 function SearchCenterController({
   searchCenter,
+  searchRadiusMiles,
 }: {
   searchCenter?: { lat: number; lng: number } | null;
+  searchRadiusMiles?: number;
 }) {
   const map = useMap();
 
@@ -125,11 +130,27 @@ function SearchCenterController({
   if (!searchCenter) return null;
 
   return (
-    <Marker
-      position={[searchCenter.lat, searchCenter.lng]}
-      icon={searchCenterIcon}
-      interactive={false}
-    />
+    <>
+      {searchRadiusMiles && (
+        <Circle
+          center={[searchCenter.lat, searchCenter.lng]}
+          radius={searchRadiusMiles * METERS_PER_MILE}
+          pathOptions={{
+            color: "#2563eb",
+            fillColor: "#2563eb",
+            fillOpacity: 0.06,
+            opacity: 0.35,
+            weight: 1,
+          }}
+          interactive={false}
+        />
+      )}
+      <Marker
+        position={[searchCenter.lat, searchCenter.lng]}
+        icon={searchCenterIcon}
+        interactive={false}
+      />
+    </>
   );
 }
 
@@ -139,6 +160,7 @@ export default function HiddenGemsMap({
   isPickingLocation = false,
   onMapPress,
   searchCenter,
+  searchRadiusMiles,
 }: HiddenGemsMapProps) {
   const [hoverCoordinates, setHoverCoordinates] =
     useState<HoverCoordinates | null>(null);
@@ -208,7 +230,10 @@ export default function HiddenGemsMap({
           onMapPress={onMapPress}
           onHover={setHoverCoordinates}
         />
-        <SearchCenterController searchCenter={searchCenter} />
+        <SearchCenterController
+          searchCenter={searchCenter}
+          searchRadiusMiles={searchRadiusMiles}
+        />
 
         <TileLayer
           attribution='&copy; OpenStreetMap contributors'

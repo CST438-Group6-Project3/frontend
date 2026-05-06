@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { StyleSheet, View } from "react-native";
-import MapView, { Marker, MapPressEvent } from "react-native-maps";
+import MapView, { Circle, Marker, MapPressEvent } from "react-native-maps";
 import type { LocationResponse } from "../../api/locations";
 
 const DEFAULT_US_REGION = {
@@ -11,6 +11,7 @@ const DEFAULT_US_REGION = {
 };
 const SEARCH_CENTER_VIEW_RADIUS_MILES = 100;
 const MILES_PER_LATITUDE_DEGREE = 69;
+const METERS_PER_MILE = 1609.344;
 
 type Props = {
     locations: LocationResponse[];
@@ -18,6 +19,7 @@ type Props = {
     isPickingLocation?: boolean;
     onMapPress?: (coordinates: { lat: number; lng: number }) => void;
     searchCenter?: { lat: number; lng: number } | null;
+    searchRadiusMiles?: number;
 };
 
 export default function HiddenGemsMap({
@@ -26,6 +28,7 @@ export default function HiddenGemsMap({
     isPickingLocation = false,
     onMapPress,
     searchCenter,
+    searchRadiusMiles,
 }: Props) {
     const mapRef = useRef<MapView | null>(null);
 
@@ -75,18 +78,32 @@ export default function HiddenGemsMap({
             ))}
 
             {searchCenter && (
-                <Marker
-                    coordinate={{
-                        latitude: searchCenter.lat,
-                        longitude: searchCenter.lng,
-                    }}
-                    anchor={{ x: 0.5, y: 0.5 }}
-                    tracksViewChanges={false}
-                >
-                    <View style={styles.searchCenterMarker}>
-                        <View style={styles.searchCenterDot} />
-                    </View>
-                </Marker>
+                <>
+                    {searchRadiusMiles && (
+                        <Circle
+                            center={{
+                                latitude: searchCenter.lat,
+                                longitude: searchCenter.lng,
+                            }}
+                            radius={searchRadiusMiles * METERS_PER_MILE}
+                            strokeColor="rgba(37, 99, 235, 0.35)"
+                            fillColor="rgba(37, 99, 235, 0.06)"
+                            strokeWidth={1}
+                        />
+                    )}
+                    <Marker
+                        coordinate={{
+                            latitude: searchCenter.lat,
+                            longitude: searchCenter.lng,
+                        }}
+                        anchor={{ x: 0.5, y: 0.5 }}
+                        tracksViewChanges={false}
+                    >
+                        <View style={styles.searchCenterMarker}>
+                            <View style={styles.searchCenterDot} />
+                        </View>
+                    </Marker>
+                </>
             )}
         </MapView>
     );
