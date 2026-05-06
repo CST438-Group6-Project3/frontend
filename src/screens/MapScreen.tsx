@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  GestureResponderEvent,
   Modal,
-  PanResponder,
   Pressable,
   Platform,
   StyleSheet,
@@ -28,6 +26,10 @@ import {
 } from "../api/imageUploads";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import HiddenGemsMap from "../components/map";
+import RadiusSlider, {
+  MAX_RADIUS_MILES,
+  formatRadiusMiles,
+} from "../components/map/RadiusSlider";
 import AddSpotSheet from "../components/location/AddSpotSheet";
 import LocationDetailsSheet from "../components/location";
 import Dropdown from "../components/Dropdown";
@@ -53,9 +55,6 @@ const ADD_SPOT_BUTTON_BOTTOM = 28;
 const ADD_SPOT_BUTTON_PREVIEW_BOTTOM = 144;
 const MAP_ACTION_BUTTON_GAP = 12;
 const MAP_ACTION_BUTTON_SIZE = 56;
-const MIN_RADIUS_MILES = 10;
-const MAX_RADIUS_MILES = 100;
-const RADIUS_STEP_MILES = 5;
 const EARTH_RADIUS_MILES = 3958.8;
 const MAP_TOP_CONTROL_MARGIN = 12;
 const MAP_HORIZONTAL_CONTROL_MARGIN = 20;
@@ -65,17 +64,6 @@ type DraftSpotCoordinates = {
   lat: number;
   lng: number;
 };
-
-type RadiusSliderProps = {
-  value: number;
-  onChange: (value: number) => void;
-};
-
-function formatRadiusMiles(radiusMiles: number) {
-  return radiusMiles >= MAX_RADIUS_MILES
-    ? `${MAX_RADIUS_MILES}+ mi`
-    : `${radiusMiles} mi`;
-}
 
 function getDistanceMiles(
   pointA: DraftSpotCoordinates,
@@ -96,95 +84,6 @@ function getDistanceMiles(
     EARTH_RADIUS_MILES *
     2 *
     Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
-  );
-}
-
-function RadiusSlider({ value, onChange }: RadiusSliderProps) {
-  const trackRef = React.useRef<View | null>(null);
-  const trackPageXRef = React.useRef(0);
-  const trackWidthRef = React.useRef(0);
-  const progress =
-    (value - MIN_RADIUS_MILES) / (MAX_RADIUS_MILES - MIN_RADIUS_MILES);
-
-  function measureTrack(pageX?: number) {
-    trackRef.current?.measureInWindow((x, _y, width) => {
-      trackPageXRef.current = x;
-      trackWidthRef.current = width;
-
-      if (pageX != null) {
-        updateValueFromPageX(pageX, x, width);
-      }
-    });
-  }
-
-  function updateValueFromPageX(
-    pageX: number,
-    measuredTrackPageX = trackPageXRef.current,
-    measuredTrackWidth = trackWidthRef.current
-  ) {
-    if (!measuredTrackWidth) return;
-
-    const clampedX = Math.max(
-      0,
-      Math.min(pageX - measuredTrackPageX, measuredTrackWidth)
-    );
-    const rawValue =
-      MIN_RADIUS_MILES +
-      (clampedX / measuredTrackWidth) * (MAX_RADIUS_MILES - MIN_RADIUS_MILES);
-    const steppedValue =
-      Math.round(rawValue / RADIUS_STEP_MILES) * RADIUS_STEP_MILES;
-
-    onChange(Math.max(MIN_RADIUS_MILES, Math.min(steppedValue, MAX_RADIUS_MILES)));
-  }
-
-  const panResponder = React.useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
-        onStartShouldSetPanResponderCapture: () => true,
-        onMoveShouldSetPanResponderCapture: () => true,
-        onPanResponderGrant: (event: GestureResponderEvent) => {
-          measureTrack(event.nativeEvent.pageX);
-        },
-        onPanResponderMove: (event: GestureResponderEvent) => {
-          updateValueFromPageX(event.nativeEvent.pageX);
-        },
-      }),
-    []
-  );
-
-  return (
-    <View style={styles.radiusSlider}>
-      <View style={styles.radiusSliderLabels}>
-        <Text style={styles.radiusSliderLabel}>{MIN_RADIUS_MILES} mi</Text>
-        <Text style={styles.radiusSliderValue}>{formatRadiusMiles(value)}</Text>
-        <Text style={styles.radiusSliderLabel}>{MAX_RADIUS_MILES}+ mi</Text>
-      </View>
-
-      <View
-        ref={trackRef}
-        style={styles.radiusSliderTrack}
-        onLayout={() => {
-          requestAnimationFrame(() => measureTrack());
-        }}
-        {...panResponder.panHandlers}
-      >
-        <View style={styles.radiusSliderRail} />
-        <View
-          style={[
-            styles.radiusSliderFill,
-            { width: `${Math.max(0, Math.min(progress, 1)) * 100}%` },
-          ]}
-        />
-        <View
-          style={[
-            styles.radiusSliderThumb,
-            { left: `${Math.max(0, Math.min(progress, 1)) * 100}%` },
-          ]}
-        />
-      </View>
-    </View>
   );
 }
 
@@ -1054,59 +953,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "800",
     marginBottom: 10,
-  },
-  radiusSlider: {
-    marginBottom: 12,
-  },
-  radiusSliderLabels: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  radiusSliderLabel: {
-    color: "#6b7280",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  radiusSliderValue: {
-    color: "#111827",
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  radiusSliderTrack: {
-    position: "relative",
-    height: 32,
-    justifyContent: "center",
-  },
-  radiusSliderRail: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    height: 6,
-    borderRadius: 999,
-    backgroundColor: "#e5e7eb",
-  },
-  radiusSliderFill: {
-    position: "absolute",
-    left: 0,
-    height: 6,
-    borderRadius: 999,
-    backgroundColor: "#2563eb",
-  },
-  radiusSliderThumb: {
-    position: "absolute",
-    width: 24,
-    height: 24,
-    marginLeft: -12,
-    borderRadius: 12,
-    borderWidth: 3,
-    borderColor: "white",
-    backgroundColor: "#2563eb",
-    shadowColor: "#000",
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-    elevation: 4,
   },
   addSpotButton: {
     position: "absolute",
