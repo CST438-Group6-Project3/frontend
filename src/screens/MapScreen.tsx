@@ -81,6 +81,7 @@ export default function MapScreen() {
     user &&
     (detailsLocation.createdById === user.id || user.role === "admin")
   );
+  const isLocationSheetOpen = Boolean(detailsLocation || draftCoordinates || editingLocation);
 
   useEffect(() => {
     async function loadLocations() {
@@ -99,6 +100,12 @@ export default function MapScreen() {
 
     loadLocations();
   }, []);
+
+  useEffect(() => {
+    if (isLocationSheetOpen) {
+      setDropdownOpen(false);
+    }
+  }, [isLocationSheetOpen]);
 
   function handleMarkerPress(location: LocationResponse) {
     setDropdownOpen(false);
@@ -384,27 +391,31 @@ export default function MapScreen() {
 
       <View style={styles.overlayContainer} pointerEvents="box-none">
 
-        <Pressable
-          style={styles.avatarButton}
-          pointerEvents="auto"
-          onPress={() => setDropdownOpen(prev => !prev)}
-        >
-          <Image
-            source={
-              user?.avatar_url
-                ? { uri: user.avatar_url }
-                : require("../../assets/default-avatar.png")
-            }
-            style={styles.avatar}
-          />
-        </Pressable>
+        {!isLocationSheetOpen && (
+          <>
+            <Pressable
+              style={styles.avatarButton}
+              pointerEvents="auto"
+              onPress={() => setDropdownOpen((prev) => !prev)}
+            >
+              <Image
+                source={
+                  user?.avatar_url
+                    ? { uri: user.avatar_url }
+                    : require("../../assets/default-avatar.png")
+                }
+                style={styles.avatar}
+              />
+            </Pressable>
 
-        <View pointerEvents="box-none">
-          <Dropdown
-            visible={dropdownOpen}
-            onClose={() => setDropdownOpen(false)}
-          />
-        </View>
+            <View pointerEvents="box-none">
+              <Dropdown
+                visible={dropdownOpen}
+                onClose={() => setDropdownOpen(false)}
+              />
+            </View>
+          </>
+        )}
 
         <Pressable
           style={[
