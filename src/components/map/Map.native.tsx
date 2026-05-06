@@ -33,7 +33,9 @@ type Props = {
     locations: LocationResponse[];
     onMarkerPress: (location: LocationResponse) => void;
     isPickingLocation?: boolean;
+    isPickingSearchCenter?: boolean;
     onMapPress?: (coordinates: { lat: number; lng: number }) => void;
+    onCameraCenterChange?: (coordinates: { lat: number; lng: number }) => void;
     searchCenter?: { lat: number; lng: number } | null;
     searchRadiusMiles?: number;
 };
@@ -42,7 +44,9 @@ export default function HiddenGemsMap({
     locations,
     onMarkerPress,
     isPickingLocation = false,
+    isPickingSearchCenter = false,
     onMapPress,
+    onCameraCenterChange,
     searchCenter,
     searchRadiusMiles,
 }: Props) {
@@ -71,12 +75,17 @@ export default function HiddenGemsMap({
     }, [searchCenter]);
 
     return (
+        <View style={styles.container}>
         <MapView
             ref={mapRef}
-            style={{ flex: 1 }}
+            style={styles.map}
             initialRegion={DEFAULT_US_REGION}
             onRegionChangeComplete={(region: Region) => {
                 currentRegionRef.current = region;
+                onCameraCenterChange?.({
+                    lat: region.latitude,
+                    lng: region.longitude,
+                });
             }}
             onPress={(event: MapPressEvent) => {
                 if (!isPickingLocation) return;
@@ -130,10 +139,24 @@ export default function HiddenGemsMap({
                 </>
             )}
         </MapView>
+            {isPickingSearchCenter && (
+                <View pointerEvents="none" style={styles.centerPickerCrosshair}>
+                    <View style={styles.centerPickerVertical} />
+                    <View style={styles.centerPickerHorizontal} />
+                </View>
+            )}
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        position: "relative",
+    },
+    map: {
+        flex: 1,
+    },
     searchCenterMarker: {
         width: 34,
         height: 34,
@@ -156,5 +179,30 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: "white",
         backgroundColor: "#2563eb",
+    },
+    centerPickerCrosshair: {
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        width: 28,
+        height: 28,
+        marginLeft: -14,
+        marginTop: -14,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    centerPickerVertical: {
+        position: "absolute",
+        width: 3,
+        height: 28,
+        borderRadius: 999,
+        backgroundColor: "rgba(17, 24, 39, 0.55)",
+    },
+    centerPickerHorizontal: {
+        position: "absolute",
+        width: 28,
+        height: 3,
+        borderRadius: 999,
+        backgroundColor: "rgba(17, 24, 39, 0.55)",
     },
 });

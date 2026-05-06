@@ -27,7 +27,9 @@ type HiddenGemsMapProps = {
   locations: LocationResponse[];
   onMarkerPress: (location: LocationResponse) => void;
   isPickingLocation?: boolean;
+  isPickingSearchCenter?: boolean;
   onMapPress?: (coordinates: { lat: number; lng: number }) => void;
+  onCameraCenterChange?: (coordinates: { lat: number; lng: number }) => void;
   searchCenter?: { lat: number; lng: number } | null;
   searchRadiusMiles?: number;
 };
@@ -169,7 +171,9 @@ export default function HiddenGemsMap({
   locations,
   onMarkerPress,
   isPickingLocation = false,
+  isPickingSearchCenter: _isPickingSearchCenter = false,
   onMapPress,
+  onCameraCenterChange: _onCameraCenterChange,
   searchCenter,
   searchRadiusMiles,
 }: HiddenGemsMapProps) {
