@@ -47,6 +47,8 @@ function getCategoryLabel(category: LocationCategory) {
 
 const ADD_SPOT_BUTTON_BOTTOM = 28;
 const ADD_SPOT_BUTTON_PREVIEW_BOTTOM = 144;
+const MAP_ACTION_BUTTON_GAP = 12;
+const MAP_ACTION_BUTTON_SIZE = 56;
 
 type DraftSpotCoordinates = {
   lat: number;
@@ -102,6 +104,8 @@ export default function MapScreen() {
   const addSpotButtonBottom = selectedLocation
     ? ADD_SPOT_BUTTON_PREVIEW_BOTTOM
     : ADD_SPOT_BUTTON_BOTTOM;
+  const searchCenterButtonBottom =
+    addSpotButtonBottom + MAP_ACTION_BUTTON_SIZE + MAP_ACTION_BUTTON_GAP;
   const filteredLocations = activeCategoryFilter
     ? locations.filter((location) => location.category === activeCategoryFilter)
     : locations;
@@ -553,33 +557,39 @@ export default function MapScreen() {
                       : "Choose a category to filter the map markers."}
                   </Text>
 
-                  <View style={styles.controlsDivider} />
-
-                  <Text style={styles.controlsSubtitle}>Search center</Text>
-
-                  <Pressable
-                    style={styles.controlsAction}
-                    onPress={startPickingSearchCenter}
-                  >
-                    <Text style={styles.controlsActionTitle}>
-                      {searchCenter ? "Move center point" : "Set center point"}
-                    </Text>
-                    <Text style={styles.controlsActionText}>
-                      Choose where radius-based search should start.
-                    </Text>
-                  </Pressable>
-
-                  {searchCenter && (
-                    <Text style={styles.controlsHint}>
-                      Center: {searchCenter.lat.toFixed(5)},{" "}
-                      {searchCenter.lng.toFixed(5)}
-                    </Text>
-                  )}
                 </View>
               </View>
             </Modal>
           </>
         )}
+
+        <Pressable
+          style={[
+            styles.searchCenterButton,
+            { bottom: searchCenterButtonBottom },
+            isPickingSearchCenter && styles.searchCenterButtonActive,
+          ]}
+          onPress={
+            isPickingSearchCenter
+              ? () => setIsPickingSearchCenter(false)
+              : startPickingSearchCenter
+          }
+        >
+          {isPickingSearchCenter ? (
+            <Text
+              style={[
+                styles.searchCenterButtonText,
+                styles.searchCenterButtonTextActive,
+              ]}
+            >
+              x
+            </Text>
+          ) : (
+            <View style={styles.searchCenterTarget}>
+              <View style={styles.searchCenterTargetDot} />
+            </View>
+          )}
+        </Pressable>
 
         <Pressable
           style={[
@@ -605,7 +615,7 @@ export default function MapScreen() {
         )}
 
         {isPickingSearchCenter && (
-          <View style={[styles.pickHint, { bottom: addSpotButtonBottom + 8 }]}>
+          <View style={[styles.pickHint, { bottom: searchCenterButtonBottom + 8 }]}>
             <Text style={styles.pickHintText}>Click the map to set search center</Text>
           </View>
         )}
@@ -799,28 +809,6 @@ export default function MapScreen() {
       textTransform: "uppercase",
       marginBottom: 10,
   },
-      controlsAction: {
-        borderWidth: 1,
-      borderColor: "#e5e7eb",
-      borderRadius: 10,
-      backgroundColor: "#ffffff",
-      padding: 14,
-      marginBottom: 10,
-  },
-      controlsActionDisabled: {
-        opacity: 0.45,
-  },
-      controlsActionTitle: {
-        color: "#111827",
-      fontSize: 16,
-      fontWeight: "800",
-      marginBottom: 4,
-  },
-      controlsActionText: {
-        color: "#4b5563",
-      fontSize: 14,
-      lineHeight: 20,
-  },
       filterGrid: {
         flexDirection: "row",
       flexWrap: "wrap",
@@ -882,6 +870,49 @@ export default function MapScreen() {
       fontSize: 34,
       lineHeight: 38,
       fontWeight: "700",
+    },
+      searchCenterButton: {
+        position: "absolute",
+      right: 18,
+      bottom: 96,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "white",
+      shadowColor: "#000",
+      shadowOpacity: 0.22,
+      shadowRadius: 8,
+      elevation: 6,
+      zIndex: 10000,
+    },
+      searchCenterButtonActive: {
+        backgroundColor: "#2563eb",
+    },
+      searchCenterButtonText: {
+        color: "#111827",
+      fontSize: 32,
+      lineHeight: 36,
+      fontWeight: "800",
+    },
+      searchCenterButtonTextActive: {
+        color: "white",
+    },
+      searchCenterTarget: {
+        width: 26,
+      height: 26,
+      borderRadius: 13,
+      borderWidth: 3,
+      borderColor: "#111827",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+      searchCenterTargetDot: {
+        width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: "#111827",
     },
       pickHint: {
         position: "absolute",
