@@ -1,6 +1,12 @@
 import "leaflet/dist/leaflet.css";
-import { useEffect, useState } from "react";
-import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
+import React, { useEffect, useState } from "react";
+import {
+  MapContainer,
+  Marker,
+  TileLayer,
+  useMapEvents,
+  ZoomControl,
+} from "react-leaflet";
 import type { LocationResponse } from "../../api/locations";
 
 import L from "leaflet";
@@ -94,6 +100,7 @@ export default function HiddenGemsMap({
 
   return (
     <div
+      className="hidden-gems-map"
       style={{
         position: "relative",
         height: "100vh",
@@ -101,15 +108,31 @@ export default function HiddenGemsMap({
         cursor: isPickingLocation ? addSpotCursor : "grab",
       }}
     >
+      <style>
+        {`
+          .hidden-gems-map .leaflet-control-container .leaflet-top.leaflet-right {
+            top: 72px;
+            right: 20px;
+          }
+
+          .hidden-gems-map .leaflet-control-container .leaflet-top.leaflet-right .leaflet-control {
+            margin-top: 0;
+            margin-right: 0;
+          }
+        `}
+      </style>
       <MapContainer
         center={[36.653, -121.797]}
         zoom={13}
+        zoomControl={false}
         style={{
           height: "100%",
           width: "100%",
           cursor: isPickingLocation ? addSpotCursor : undefined,
         }}
       >
+        <ZoomControl position="topright" />
+
         <MapClickHandler
           enabled={isPickingLocation}
           onMapPress={onMapPress}

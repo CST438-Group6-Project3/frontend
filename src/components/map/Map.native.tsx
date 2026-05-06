@@ -1,3 +1,4 @@
+import React from "react";
 import MapView, { Marker, MapPressEvent } from "react-native-maps";
 import type { LocationResponse } from "../../api/locations";
 

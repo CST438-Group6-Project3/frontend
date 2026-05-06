@@ -38,6 +38,15 @@ const CATEGORIES: { value: LocationCategory; label: string }[] = [
   { value: "other", label: "Other" },
 ];
 
+function getCategoryLabel(category: LocationCategory) {
+  return (
+    CATEGORIES.find((option) => option.value === category)?.label ?? category
+  );
+}
+
+const ADD_SPOT_BUTTON_BOTTOM = 28;
+const ADD_SPOT_BUTTON_PREVIEW_BOTTOM = 144;
+
 type DraftSpotCoordinates = {
   lat: number;
   lng: number;
@@ -82,6 +91,9 @@ export default function MapScreen() {
     (detailsLocation.createdById === user.id || user.role === "admin")
   );
   const isLocationSheetOpen = Boolean(detailsLocation || draftCoordinates || editingLocation);
+  const addSpotButtonBottom = selectedLocation
+    ? ADD_SPOT_BUTTON_PREVIEW_BOTTOM
+    : ADD_SPOT_BUTTON_BOTTOM;
 
   useEffect(() => {
     async function loadLocations() {
@@ -420,6 +432,7 @@ export default function MapScreen() {
         <Pressable
           style={[
             styles.addSpotButton,
+            { bottom: addSpotButtonBottom },
             isPickingLocation && styles.addSpotButtonActive,
           ]}
           onPress={
@@ -434,7 +447,7 @@ export default function MapScreen() {
         </Pressable>
 
         {isPickingLocation && (
-          <View style={styles.pickHint}>
+          <View style={[styles.pickHint, { bottom: addSpotButtonBottom + 8 }]}>
             <Text style={styles.pickHintText}>Click the map to place a spot</Text>
           </View>
         )}
@@ -454,7 +467,9 @@ export default function MapScreen() {
             <View style={styles.previewContent}>
               <View style={styles.previewTextContainer}>
                 <Text style={styles.previewTitle}>{selectedLocation.name}</Text>
-                <Text style={styles.previewText}>{selectedLocation.category}</Text>
+                <Text style={styles.previewText}>
+                  {getCategoryLabel(selectedLocation.category)}
+                </Text>
                 <Text style={styles.previewText}>
                   Rating: {selectedLocation.avgRating ?? 0}
                 </Text>
