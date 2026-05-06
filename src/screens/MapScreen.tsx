@@ -172,7 +172,7 @@ export default function MapScreen() {
   const [searchCenter, setSearchCenter] = useState<DraftSpotCoordinates | null>(
     null
   );
-  const [searchRadiusMiles, setSearchRadiusMiles] = useState(25);
+  const [searchRadiusMiles, setSearchRadiusMiles] = useState(MAX_RADIUS_MILES);
   const [draftCoordinates, setDraftCoordinates] =
     useState<DraftSpotCoordinates | null>(null);
   const [newSpotName, setNewSpotName] = useState("");

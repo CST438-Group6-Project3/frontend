@@ -40,6 +40,10 @@ type HoverCoordinates = {
 const addSpotCursor =
   'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2717%27 height=%2717%27 viewBox=%270 0 17 17%27%3E%3Cpath d=%27M8.5 2v13M2 8.5h13%27 stroke=%27%23000%27 stroke-width=%272%27 stroke-linecap=%27round%27/%3E%3Cpath d=%27M8.5 2v13M2 8.5h13%27 stroke=%27%23fff%27 stroke-width=%271%27 stroke-linecap=%27round%27/%3E%3C/svg%3E") 8 8, crosshair';
 
+const DEFAULT_US_CENTER: [number, number] = [39.8283, -98.5795];
+const DEFAULT_US_ZOOM = 4;
+const SEARCH_CENTER_VIEW_RADIUS_METERS = 100 * 1609.344;
+
 const searchCenterIcon = L.divIcon({
   className: "hidden-gems-search-center-icon",
   html: '<div class="hidden-gems-search-center-pin"><div class="hidden-gems-search-center-dot"></div></div>',
@@ -108,8 +112,13 @@ function SearchCenterController({
   useEffect(() => {
     if (!searchCenter) return;
 
-    map.setView([searchCenter.lat, searchCenter.lng], map.getZoom(), {
+    const bounds = L.latLng(searchCenter.lat, searchCenter.lng).toBounds(
+      SEARCH_CENTER_VIEW_RADIUS_METERS * 2
+    );
+
+    map.fitBounds(bounds, {
       animate: true,
+      padding: [32, 32],
     });
   }, [map, searchCenter]);
 
@@ -183,8 +192,8 @@ export default function HiddenGemsMap({
         `}
       </style>
       <MapContainer
-        center={[36.653, -121.797]}
-        zoom={13}
+        center={DEFAULT_US_CENTER}
+        zoom={DEFAULT_US_ZOOM}
         zoomControl={false}
         style={{
           height: "100%",

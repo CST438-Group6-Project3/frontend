@@ -3,6 +3,15 @@ import { StyleSheet, View } from "react-native";
 import MapView, { Marker, MapPressEvent } from "react-native-maps";
 import type { LocationResponse } from "../../api/locations";
 
+const DEFAULT_US_REGION = {
+    latitude: 39.8283,
+    longitude: -98.5795,
+    latitudeDelta: 32,
+    longitudeDelta: 60,
+};
+const SEARCH_CENTER_VIEW_RADIUS_MILES = 100;
+const MILES_PER_LATITUDE_DEGREE = 69;
+
 type Props = {
     locations: LocationResponse[];
     onMarkerPress: (location: LocationResponse) => void;
@@ -23,12 +32,18 @@ export default function HiddenGemsMap({
     useEffect(() => {
         if (!searchCenter) return;
 
+        const latitudeDelta =
+            (SEARCH_CENTER_VIEW_RADIUS_MILES * 2) / MILES_PER_LATITUDE_DEGREE;
+        const latitudeRadians = (searchCenter.lat * Math.PI) / 180;
+        const longitudeDelta =
+            latitudeDelta / Math.max(Math.cos(latitudeRadians), 0.1);
+
         mapRef.current?.animateToRegion(
             {
                 latitude: searchCenter.lat,
                 longitude: searchCenter.lng,
-                latitudeDelta: 0.05,
-                longitudeDelta: 0.05,
+                latitudeDelta,
+                longitudeDelta,
             },
             350
         );
@@ -38,12 +53,7 @@ export default function HiddenGemsMap({
         <MapView
             ref={mapRef}
             style={{ flex: 1 }}
-            initialRegion={{
-                latitude: 36.653,
-                longitude: -121.797,
-                latitudeDelta: 0.05,
-                longitudeDelta: 0.05,
-            }}
+            initialRegion={DEFAULT_US_REGION}
             onPress={(event: MapPressEvent) => {
                 if (!isPickingLocation) return;
 
