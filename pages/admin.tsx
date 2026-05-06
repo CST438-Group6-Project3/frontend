@@ -8,11 +8,13 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
 import { supabase } from "../lib/supabaseClient";
 import type { LocationResponse } from "../src/api/locations";
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8080/api";
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8080/api";
 
 type User = {
   id: string;
@@ -24,9 +26,12 @@ type User = {
 type LocationStatus = "pending" | "verified" | "archived";
 
 export default function Admin() {
+  const navigation = useNavigation<any>();
+
   const [users, setUsers] = useState<User[]>([]);
   const [locations, setLocations] = useState<LocationResponse[]>([]);
-  const [locationFilter, setLocationFilter] = useState<LocationStatus>("pending");
+  const [locationFilter, setLocationFilter] =
+    useState<LocationStatus>("pending");
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingAdmin, setCheckingAdmin] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -78,7 +83,10 @@ export default function Admin() {
 
       const [usersRes, locationsRes] = await Promise.all([
         axios.get(`${API_BASE_URL}/admin/users`, adminHeaders),
-        axios.get(`${API_BASE_URL}/admin/locations/status/${status}`, adminHeaders),
+        axios.get(
+          `${API_BASE_URL}/admin/locations/status/${status}`,
+          adminHeaders
+        ),
       ]);
 
       setUsers(Array.isArray(usersRes.data) ? usersRes.data : []);
@@ -113,7 +121,10 @@ export default function Admin() {
     if (user.role === "admin") return;
 
     try {
-      await axios.delete(`${API_BASE_URL}/admin/users/${user.id}`, adminHeaders);
+      await axios.delete(
+        `${API_BASE_URL}/admin/users/${user.id}`,
+        adminHeaders
+      );
       setUsers((prev) => prev.filter((u) => u.id !== user.id));
     } catch (err) {
       console.error(err);
@@ -121,12 +132,20 @@ export default function Admin() {
   }
 
   async function verifyLocation(id: string) {
-    await axios.put(`${API_BASE_URL}/admin/locations/${id}/verify`, {}, adminHeaders);
+    await axios.put(
+      `${API_BASE_URL}/admin/locations/${id}/verify`,
+      {},
+      adminHeaders
+    );
     setLocations((prev) => prev.filter((l) => l.id !== id));
   }
 
   async function archiveLocation(id: string) {
-    await axios.put(`${API_BASE_URL}/admin/locations/${id}/archive`, {}, adminHeaders);
+    await axios.put(
+      `${API_BASE_URL}/admin/locations/${id}/archive`,
+      {},
+      adminHeaders
+    );
     setLocations((prev) => prev.filter((l) => l.id !== id));
   }
 
@@ -149,6 +168,14 @@ export default function Admin() {
 
   return (
     <ScrollView style={styles.container}>
+      {/* BACK BUTTON */}
+      <Pressable
+        onPress={() => navigation.goBack()}
+        style={styles.backButton}
+      >
+        <Text style={styles.backText}>← Back</Text>
+      </Pressable>
+
       <Text style={styles.title}>Admin Panel</Text>
 
       <Text style={styles.section}>Users ({users.length})</Text>
@@ -173,11 +200,17 @@ export default function Admin() {
 
             {user.role !== "admin" && (
               <View style={styles.buttons}>
-                <Pressable style={styles.promote} onPress={() => promoteUser(user)}>
+                <Pressable
+                  style={styles.promote}
+                  onPress={() => promoteUser(user)}
+                >
                   <Text style={styles.btnText}>Promote</Text>
                 </Pressable>
 
-                <Pressable style={styles.delete} onPress={() => deleteUser(user)}>
+                <Pressable
+                  style={styles.delete}
+                  onPress={() => deleteUser(user)}
+                >
                   <Text style={styles.btnText}>Delete</Text>
                 </Pressable>
               </View>
@@ -191,18 +224,20 @@ export default function Admin() {
       </Text>
 
       <View style={styles.filters}>
-        {(["pending", "verified", "archived"] as LocationStatus[]).map((s) => (
-          <Pressable
-            key={s}
-            style={[
-              styles.filter,
-              locationFilter === s && styles.activeFilter,
-            ]}
-            onPress={() => setLocationFilter(s)}
-          >
-            <Text>{s}</Text>
-          </Pressable>
-        ))}
+        {(["pending", "verified", "archived"] as LocationStatus[]).map(
+          (s) => (
+            <Pressable
+              key={s}
+              style={[
+                styles.filter,
+                locationFilter === s && styles.activeFilter,
+              ]}
+              onPress={() => setLocationFilter(s)}
+            >
+              <Text>{s}</Text>
+            </Pressable>
+          )
+        )}
       </View>
 
       {locations.map((loc) => (
@@ -237,16 +272,28 @@ export default function Admin() {
 const styles = StyleSheet.create({
   container: { padding: 16 },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
+
+  backButton: { marginBottom: 10 },
+  backText: {
+    fontSize: 16,
+    color: "#2563eb",
+    fontWeight: "600",
+  },
+
   title: { fontSize: 28, fontWeight: "bold" },
   section: { fontSize: 20, marginTop: 20 },
+
   card: {
     backgroundColor: "#fff",
     padding: 12,
     marginVertical: 8,
     borderRadius: 10,
   },
+
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
+
   avatar: { width: 40, height: 40, borderRadius: 20 },
+
   avatarFallback: {
     width: 40,
     height: 40,
@@ -255,18 +302,35 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+
   avatarText: { color: "#fff", fontWeight: "bold" },
+
   email: { fontWeight: "bold" },
+
   buttons: { flexDirection: "row", gap: 8 },
-  promote: { backgroundColor: "blue", padding: 6, borderRadius: 6 },
-  delete: { backgroundColor: "red", padding: 6, borderRadius: 6 },
+
+  promote: {
+    backgroundColor: "blue",
+    padding: 6,
+    borderRadius: 6,
+  },
+
+  delete: {
+    backgroundColor: "red",
+    padding: 6,
+    borderRadius: 6,
+  },
+
   btnText: { color: "#fff" },
+
   filters: { flexDirection: "row", gap: 10, marginVertical: 10 },
+
   filter: {
     padding: 8,
     borderWidth: 1,
     borderRadius: 10,
   },
+
   activeFilter: {
     backgroundColor: "#ddd",
   },
