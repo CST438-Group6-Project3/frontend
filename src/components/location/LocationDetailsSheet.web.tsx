@@ -1,16 +1,31 @@
+import React from "react";
 import { useState } from "react";
 import type { LocationResponse } from "../../api/locations";
 
 type Props = {
   location: LocationResponse | null;
+  canEditLocation?: boolean;
+  isDeletingLocation?: boolean;
+  deleteError?: string | null;
   onClose: () => void;
+  onEditPress?: () => void;
+  onDeleteConfirm?: () => void;
 };
 
-export default function LocationDetailsSheet({ location, onClose }: Props) {
+export default function LocationDetailsSheet({
+  location,
+  canEditLocation = false,
+  isDeletingLocation = false,
+  deleteError = null,
+  onClose,
+  onEditPress,
+  onDeleteConfirm,
+}: Props) {
   if (!location) return null;
 
   const imageUrls = location.imageUrls ?? [];
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [showDeleteWarning, setShowDeleteWarning] = useState(false);
   const mainImageUrl = imageUrls[selectedImageIndex];
 
   return (
@@ -121,6 +136,156 @@ export default function LocationDetailsSheet({ location, onClose }: Props) {
       <p>
         <strong>Coordinates:</strong> {location.lat}, {location.lng}
       </p>
+
+      {canEditLocation && (
+        <div
+          style={{
+            borderTop: "1px solid #e5e7eb",
+            marginTop: 24,
+            paddingTop: 20,
+          }}
+        >
+          <button
+            type="button"
+            onClick={onEditPress}
+            style={{
+              width: "100%",
+              border: "none",
+              borderRadius: 8,
+              backgroundColor: "#111827",
+              color: "white",
+              cursor: "pointer",
+              fontSize: 16,
+              fontWeight: 700,
+              padding: "14px 16px",
+            }}
+          >
+            Edit location
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowDeleteWarning(true)}
+            style={{
+              width: "100%",
+              border: "1px solid #dc2626",
+              borderRadius: 8,
+              backgroundColor: "white",
+              color: "#dc2626",
+              cursor: "pointer",
+              fontSize: 16,
+              fontWeight: 700,
+              marginTop: 10,
+              padding: "14px 16px",
+            }}
+          >
+            Delete location
+          </button>
+        </div>
+      )}
+
+      {showDeleteWarning && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-location-title"
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(17,24,39,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+            zIndex: 10001,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 360,
+              borderRadius: 12,
+              backgroundColor: "white",
+              boxShadow: "0 18px 45px rgba(0,0,0,0.24)",
+              padding: 22,
+            }}
+          >
+            <h3
+              id="delete-location-title"
+              style={{
+                margin: 0,
+                color: "#111827",
+                fontSize: 20,
+                fontWeight: 800,
+              }}
+            >
+              Delete location?
+            </h3>
+            <p
+              style={{
+                color: "#4b5563",
+                fontSize: 15,
+                lineHeight: 1.5,
+                marginBottom: 20,
+                marginTop: 10,
+              }}
+            >
+              This action is not reversible. The location and its details would be
+              permanently removed.
+            </p>
+            {deleteError && (
+              <p
+                style={{
+                  color: "#dc2626",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  marginBottom: 14,
+                  marginTop: -6,
+                }}
+              >
+                {deleteError}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowDeleteWarning(false)}
+              disabled={isDeletingLocation}
+              style={{
+                width: "100%",
+                border: "none",
+                borderRadius: 8,
+                backgroundColor: "#111827",
+                color: "white",
+                cursor: "pointer",
+                fontSize: 15,
+                fontWeight: 700,
+                opacity: isDeletingLocation ? 0.65 : 1,
+                padding: "12px 14px",
+              }}
+            >
+              Keep location
+            </button>
+            <button
+              type="button"
+              onClick={onDeleteConfirm}
+              disabled={isDeletingLocation}
+              style={{
+                width: "100%",
+                border: "none",
+                backgroundColor: "transparent",
+                color: "#dc2626",
+                cursor: "pointer",
+                fontSize: 15,
+                fontWeight: 700,
+                marginTop: 10,
+                opacity: isDeletingLocation ? 0.65 : 1,
+                padding: "12px 14px",
+              }}
+            >
+              {isDeletingLocation ? "Deleting..." : "Delete location"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
