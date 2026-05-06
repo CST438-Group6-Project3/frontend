@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Modal,
   Pressable,
+  Platform,
   StyleSheet,
   Text,
   View,
@@ -9,20 +11,25 @@ import {
 } from "react-native";
 import { useAuth } from "../../auth/AuthProvider";
 import {
-    createLocation,
-    deleteLocation,
-    getApiErrorMessage,
-    getLocations,
-    LocationCategory,
-    LocationResponse,
-    updateLocation,
+  createLocation,
+  deleteLocation,
+  getApiErrorMessage,
+  getLocations,
+  LocationCategory,
+  LocationResponse,
+  updateLocation,
 } from "../api/locations";
 import {
   MAX_LOCATION_IMAGES,
   SpotImageUpload,
   uploadLocationImages,
 } from "../api/imageUploads";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import HiddenGemsMap from "../components/map";
+import RadiusSlider, {
+  MAX_RADIUS_MILES,
+  formatRadiusMiles,
+} from "../components/map/RadiusSlider";
 import AddSpotSheet from "../components/location/AddSpotSheet";
 import LocationDetailsSheet from "../components/location";
 import Dropdown from "../components/Dropdown";
@@ -38,13 +45,51 @@ const CATEGORIES: { value: LocationCategory; label: string }[] = [
   { value: "other", label: "Other" },
 ];
 
+function getCategoryLabel(category: LocationCategory) {
+  return (
+    CATEGORIES.find((option) => option.value === category)?.label ?? category
+  );
+}
+
+const ADD_SPOT_BUTTON_BOTTOM = 28;
+const ADD_SPOT_BUTTON_PREVIEW_BOTTOM = 144;
+const MAP_ACTION_BUTTON_GAP = 12;
+const MAP_ACTION_BUTTON_SIZE = 56;
+const EARTH_RADIUS_MILES = 3958.8;
+const MAP_TOP_CONTROL_MARGIN = 12;
+const MAP_HORIZONTAL_CONTROL_MARGIN = 20;
+const CONTROLS_PANEL_VERTICAL_GAP = 12;
+
 type DraftSpotCoordinates = {
   lat: number;
   lng: number;
 };
 
+function getDistanceMiles(
+  pointA: DraftSpotCoordinates,
+  pointB: DraftSpotCoordinates
+) {
+  const lat1 = (pointA.lat * Math.PI) / 180;
+  const lat2 = (pointB.lat * Math.PI) / 180;
+  const deltaLat = ((pointB.lat - pointA.lat) * Math.PI) / 180;
+  const deltaLng = ((pointB.lng - pointA.lng) * Math.PI) / 180;
+  const haversine =
+    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+    Math.cos(lat1) *
+    Math.cos(lat2) *
+    Math.sin(deltaLng / 2) *
+    Math.sin(deltaLng / 2);
+
+  return (
+    EARTH_RADIUS_MILES *
+    2 *
+    Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine))
+  );
+}
+
 export default function MapScreen() {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [locations, setLocations] = useState<LocationResponse[]>([]);
   const [selectedLocation, setSelectedLocation] =
     useState<LocationResponse | null>(null);
@@ -53,6 +98,11 @@ export default function MapScreen() {
   const [detailsLocation, setDetailsLocation] =
     useState<LocationResponse | null>(null);
   const [isPickingLocation, setIsPickingLocation] = useState(false);
+  const [isPickingSearchCenter, setIsPickingSearchCenter] = useState(false);
+  const [searchCenter, setSearchCenter] = useState<DraftSpotCoordinates | null>(
+    null
+  );
+  const [searchRadiusMiles, setSearchRadiusMiles] = useState(MAX_RADIUS_MILES);
   const [draftCoordinates, setDraftCoordinates] =
     useState<DraftSpotCoordinates | null>(null);
   const [newSpotName, setNewSpotName] = useState("");
@@ -64,6 +114,9 @@ export default function MapScreen() {
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [controlsOpen, setControlsOpen] = useState(false);
+  const [activeCategoryFilter, setActiveCategoryFilter] =
+    useState<LocationCategory | null>(null);
   const [editingLocation, setEditingLocation] =
     useState<LocationResponse | null>(null);
   const [editLocationName, setEditLocationName] = useState("");
@@ -74,14 +127,38 @@ export default function MapScreen() {
   const [isSavingEditLocation, setIsSavingEditLocation] = useState(false);
   const [isUploadingEditImages, setIsUploadingEditImages] = useState(false);
   const [editLocationError, setEditLocationError] = useState<string | null>(null);
-    const [isDeletingLocation, setIsDeletingLocation] = useState(false);
-    const [deleteLocationError, setDeleteLocationError] = useState<string | null>(null);
+  const [isDeletingLocation, setIsDeletingLocation] = useState(false);
+  const [deleteLocationError, setDeleteLocationError] = useState<string | null>(null);
   const canEditDetailsLocation = Boolean(
     detailsLocation &&
     user &&
     (detailsLocation.createdById === user.id || user.role === "admin")
   );
   const isLocationSheetOpen = Boolean(detailsLocation || draftCoordinates || editingLocation);
+  const addSpotButtonBottom = selectedLocation
+    ? ADD_SPOT_BUTTON_PREVIEW_BOTTOM
+    : ADD_SPOT_BUTTON_BOTTOM;
+  const searchCenterButtonBottom =
+    addSpotButtonBottom + MAP_ACTION_BUTTON_SIZE + MAP_ACTION_BUTTON_GAP;
+  const topControlOffset = Math.max(15, insets.top + MAP_TOP_CONTROL_MARGIN);
+  const controlsPanelTop =
+    topControlOffset + 44 + CONTROLS_PANEL_VERTICAL_GAP;
+  // TODO: Move category/radius filtering to the backend once location volume grows.
+  const filteredLocations = locations.filter((location) => {
+    if (activeCategoryFilter && location.category !== activeCategoryFilter) {
+      return false;
+    }
+
+    if (!searchCenter) {
+      return true;
+    }
+
+    return (
+      getDistanceMiles(searchCenter, { lat: location.lat, lng: location.lng }) <=
+      searchRadiusMiles
+    );
+  });
+  const isPickingMapPoint = isPickingLocation || isPickingSearchCenter;
 
   useEffect(() => {
     async function loadLocations() {
@@ -104,11 +181,28 @@ export default function MapScreen() {
   useEffect(() => {
     if (isLocationSheetOpen) {
       setDropdownOpen(false);
+      setControlsOpen(false);
     }
   }, [isLocationSheetOpen]);
 
+  useEffect(() => {
+    if (
+      selectedLocation &&
+      !filteredLocations.some((location) => location.id === selectedLocation.id)
+    ) {
+      setSelectedLocation(null);
+    }
+  }, [filteredLocations, selectedLocation]);
+
   function handleMarkerPress(location: LocationResponse) {
     setDropdownOpen(false);
+
+    if (isPickingSearchCenter) {
+      setSearchCenter({ lat: location.lat, lng: location.lng });
+      setIsPickingSearchCenter(false);
+      return;
+    }
+
     if (isPickingLocation) return;
 
     if (draftCoordinates) {
@@ -130,238 +224,262 @@ export default function MapScreen() {
     }
   }
 
-    function startPickingLocation() {
-        setSelectedLocation(null);
-        setDetailsLocation(null);
-        setDraftCoordinates(null);
-        setSaveError(null);
-        setIsPickingLocation(true);
+  function startPickingLocation() {
+    setControlsOpen(false);
+    setIsPickingSearchCenter(false);
+    setSelectedLocation(null);
+    setDetailsLocation(null);
+    setDraftCoordinates(null);
+    setSaveError(null);
+    setIsPickingLocation(true);
+  }
+
+  function startPickingSearchCenter() {
+    setControlsOpen(false);
+    setIsPickingLocation(false);
+    setSelectedLocation(null);
+    setDetailsLocation(null);
+    setDraftCoordinates(null);
+    setIsPickingSearchCenter(true);
+  }
+
+  function handleMapPress(coordinates: DraftSpotCoordinates) {
+    if (isPickingSearchCenter) {
+      if (Platform.OS !== "web") return;
+
+      setSearchCenter(coordinates);
+      setIsPickingSearchCenter(false);
+      return;
     }
 
-    function handleMapPress(coordinates: DraftSpotCoordinates) {
-        if (!isPickingLocation) return;
+    if (!isPickingLocation) return;
 
-        setDetailsLocation(null);
-        setSelectedLocation(null);
-        setDraftCoordinates(coordinates);
-        setIsPickingLocation(false);
-        setSaveError(null);
+    setDetailsLocation(null);
+    setSelectedLocation(null);
+    setDraftCoordinates(coordinates);
+    setIsPickingLocation(false);
+    setSaveError(null);
+  }
+
+  function confirmNativeSearchCenter(coordinates: DraftSpotCoordinates) {
+    setSearchCenter(coordinates);
+    setIsPickingSearchCenter(false);
+  }
+
+  function resetAddSpotForm() {
+    setDraftCoordinates(null);
+    setNewSpotName("");
+    setNewSpotDescription("");
+    setNewSpotCategory("study_spot");
+    setNewSpotImageUrls([]);
+    setSaveError(null);
+    setIsSavingSpot(false);
+    setIsUploadingImages(false);
+  }
+
+  function startEditingLocation(location: LocationResponse) {
+    setEditingLocation(location);
+    setDetailsLocation(null);
+    setSelectedLocation(null);
+    setDraftCoordinates(null);
+    setEditLocationName(location.name);
+    setEditLocationDescription(location.description ?? "");
+    setEditLocationCategory(location.category);
+    setEditLocationImageUrls(location.imageUrls ?? []);
+    setEditLocationError(null);
+    setIsSavingEditLocation(false);
+    setIsUploadingEditImages(false);
+    setDeleteLocationError(null);
+  }
+
+  function resetEditLocationForm() {
+    setEditingLocation(null);
+    setEditLocationName("");
+    setEditLocationDescription("");
+    setEditLocationCategory("study_spot");
+    setEditLocationImageUrls([]);
+    setEditLocationError(null);
+    setIsSavingEditLocation(false);
+    setIsUploadingEditImages(false);
+  }
+
+  async function handleAddImages(images: SpotImageUpload[]) {
+    if (!user?.id) {
+      setSaveError("Sign in before uploading images.");
+      return;
     }
 
-    function resetAddSpotForm() {
-        setDraftCoordinates(null);
-        setNewSpotName("");
-        setNewSpotDescription("");
-        setNewSpotCategory("study_spot");
-        setNewSpotImageUrls([]);
-        setSaveError(null);
-        setIsSavingSpot(false);
-        setIsUploadingImages(false);
+    const remainingSlots = MAX_LOCATION_IMAGES - newSpotImageUrls.length;
+    if (remainingSlots <= 0) {
+      setSaveError(`You can upload up to ${MAX_LOCATION_IMAGES} images.`);
+      return;
     }
 
-    function startEditingLocation(location: LocationResponse) {
-        setEditingLocation(location);
-        setDetailsLocation(null);
-        setSelectedLocation(null);
-        setDraftCoordinates(null);
-        setEditLocationName(location.name);
-        setEditLocationDescription(location.description ?? "");
-        setEditLocationCategory(location.category);
-        setEditLocationImageUrls(location.imageUrls ?? []);
-        setEditLocationError(null);
-        setIsSavingEditLocation(false);
-        setIsUploadingEditImages(false);
-        setDeleteLocationError(null);
+    const imagesToUpload = images.slice(0, remainingSlots);
+    if (images.length > remainingSlots) {
+      setSaveError(`Only ${remainingSlots} more image(s) can be added.`);
+    } else {
+      setSaveError(null);
     }
 
-    function resetEditLocationForm() {
-        setEditingLocation(null);
-        setEditLocationName("");
-        setEditLocationDescription("");
-        setEditLocationCategory("study_spot");
-        setEditLocationImageUrls([]);
-        setEditLocationError(null);
-        setIsSavingEditLocation(false);
-        setIsUploadingEditImages(false);
+    try {
+      setIsUploadingImages(true);
+
+      const uploadedUrls = await uploadLocationImages(imagesToUpload, user.id);
+      setNewSpotImageUrls((currentUrls) => [...currentUrls, ...uploadedUrls]);
+    } catch (err) {
+      console.error("Failed to upload location images:", err);
+      setSaveError(getApiErrorMessage(err));
+    } finally {
+      setIsUploadingImages(false);
+    }
+  }
+
+  function handleRemoveImage(imageUrl: string) {
+    setNewSpotImageUrls((currentUrls) =>
+      currentUrls.filter((currentUrl) => currentUrl !== imageUrl)
+    );
+  }
+
+  async function handleAddEditImages(images: SpotImageUpload[]) {
+    if (!user?.id) {
+      setEditLocationError("Sign in before uploading images.");
+      return;
     }
 
-    async function handleAddImages(images: SpotImageUpload[]) {
-        if (!user?.id) {
-            setSaveError("Sign in before uploading images.");
-            return;
-        }
-
-        const remainingSlots = MAX_LOCATION_IMAGES - newSpotImageUrls.length;
-        if (remainingSlots <= 0) {
-            setSaveError(`You can upload up to ${MAX_LOCATION_IMAGES} images.`);
-            return;
-        }
-
-        const imagesToUpload = images.slice(0, remainingSlots);
-        if (images.length > remainingSlots) {
-            setSaveError(`Only ${remainingSlots} more image(s) can be added.`);
-        } else {
-            setSaveError(null);
-        }
-
-        try {
-            setIsUploadingImages(true);
-
-            const uploadedUrls = await uploadLocationImages(imagesToUpload, user.id);
-            setNewSpotImageUrls((currentUrls) => [...currentUrls, ...uploadedUrls]);
-        } catch (err) {
-            console.error("Failed to upload location images:", err);
-            setSaveError(getApiErrorMessage(err));
-        } finally {
-            setIsUploadingImages(false);
-        }
+    const remainingSlots = MAX_LOCATION_IMAGES - editLocationImageUrls.length;
+    if (remainingSlots <= 0) {
+      setEditLocationError(`You can upload up to ${MAX_LOCATION_IMAGES} images.`);
+      return;
     }
 
-    function handleRemoveImage(imageUrl: string) {
-        setNewSpotImageUrls((currentUrls) =>
-            currentUrls.filter((currentUrl) => currentUrl !== imageUrl)
-        );
+    const imagesToUpload = images.slice(0, remainingSlots);
+    if (images.length > remainingSlots) {
+      setEditLocationError(`Only ${remainingSlots} more image(s) can be added.`);
+    } else {
+      setEditLocationError(null);
     }
 
-    async function handleAddEditImages(images: SpotImageUpload[]) {
-        if (!user?.id) {
-            setEditLocationError("Sign in before uploading images.");
-            return;
-        }
+    try {
+      setIsUploadingEditImages(true);
 
-        const remainingSlots = MAX_LOCATION_IMAGES - editLocationImageUrls.length;
-        if (remainingSlots <= 0) {
-            setEditLocationError(`You can upload up to ${MAX_LOCATION_IMAGES} images.`);
-            return;
-        }
+      const uploadedUrls = await uploadLocationImages(imagesToUpload, user.id);
+      setEditLocationImageUrls((currentUrls) => [
+        ...currentUrls,
+        ...uploadedUrls,
+      ]);
+    } catch (err) {
+      console.error("Failed to upload edited location images:", err);
+      setEditLocationError(getApiErrorMessage(err));
+    } finally {
+      setIsUploadingEditImages(false);
+    }
+  }
 
-        const imagesToUpload = images.slice(0, remainingSlots);
-        if (images.length > remainingSlots) {
-            setEditLocationError(`Only ${remainingSlots} more image(s) can be added.`);
-        } else {
-            setEditLocationError(null);
-        }
+  function handleRemoveEditImage(imageUrl: string) {
+    setEditLocationImageUrls((currentUrls) =>
+      currentUrls.filter((currentUrl) => currentUrl !== imageUrl)
+    );
+  }
 
-        try {
-            setIsUploadingEditImages(true);
+  async function handleCreateSpot() {
+    if (!draftCoordinates) return;
 
-            const uploadedUrls = await uploadLocationImages(imagesToUpload, user.id);
-            setEditLocationImageUrls((currentUrls) => [
-                ...currentUrls,
-                ...uploadedUrls,
-            ]);
-        } catch (err) {
-            console.error("Failed to upload edited location images:", err);
-            setEditLocationError(getApiErrorMessage(err));
-        } finally {
-            setIsUploadingEditImages(false);
-        }
+    const trimmedName = newSpotName.trim();
+    if (!trimmedName) {
+      setSaveError("Add a name for this spot.");
+      return;
     }
 
-    function handleRemoveEditImage(imageUrl: string) {
-        setEditLocationImageUrls((currentUrls) =>
-            currentUrls.filter((currentUrl) => currentUrl !== imageUrl)
-        );
+    if (!user?.id) {
+      setSaveError("Sign in before adding a spot.");
+      return;
     }
 
-    async function handleCreateSpot() {
-        if (!draftCoordinates) return;
+    try {
+      setIsSavingSpot(true);
+      setSaveError(null);
 
-        const trimmedName = newSpotName.trim();
-        if (!trimmedName) {
-            setSaveError("Add a name for this spot.");
-            return;
-        }
+      const createdLocation = await createLocation({
+        name: trimmedName,
+        description: newSpotDescription.trim() || undefined,
+        category: newSpotCategory,
+        tags: [],
+        imageUrls: newSpotImageUrls,
+        lat: draftCoordinates.lat,
+        lng: draftCoordinates.lng,
+        createdById: user.id,
+      });
 
-        if (!user?.id) {
-            setSaveError("Sign in before adding a spot.");
-            return;
-        }
+      setLocations((currentLocations) => [...currentLocations, createdLocation]);
+      resetAddSpotForm();
+      setDetailsLocation(createdLocation);
+    } catch (err) {
+      console.error("Failed to create location:", err);
+      setSaveError(getApiErrorMessage(err));
+    } finally {
+      setIsSavingSpot(false);
+    }
+  }
 
-        try {
-            setIsSavingSpot(true);
-            setSaveError(null);
+  async function handleUpdateLocation() {
+    if (!editingLocation) return;
 
-            const createdLocation = await createLocation({
-                name: trimmedName,
-                description: newSpotDescription.trim() || undefined,
-                category: newSpotCategory,
-                tags: [],
-                imageUrls: newSpotImageUrls,
-                lat: draftCoordinates.lat,
-                lng: draftCoordinates.lng,
-                createdById: user.id,
-            });
-
-            setLocations((currentLocations) => [...currentLocations, createdLocation]);
-            resetAddSpotForm();
-            setDetailsLocation(createdLocation);
-        } catch (err) {
-            console.error("Failed to create location:", err);
-            setSaveError(getApiErrorMessage(err));
-        } finally {
-            setIsSavingSpot(false);
-        }
+    const trimmedName = editLocationName.trim();
+    if (!trimmedName) {
+      setEditLocationError("Add a name for this spot.");
+      return;
     }
 
-    async function handleUpdateLocation() {
-        if (!editingLocation) return;
+    try {
+      setIsSavingEditLocation(true);
+      setEditLocationError(null);
 
-        const trimmedName = editLocationName.trim();
-        if (!trimmedName) {
-            setEditLocationError("Add a name for this spot.");
-            return;
-        }
+      const updatedLocation = await updateLocation(editingLocation.id, {
+        name: trimmedName,
+        description: editLocationDescription.trim(),
+        category: editLocationCategory,
+        imageUrls: editLocationImageUrls,
+      });
 
-        try {
-            setIsSavingEditLocation(true);
-            setEditLocationError(null);
-
-            const updatedLocation = await updateLocation(editingLocation.id, {
-                name: trimmedName,
-                description: editLocationDescription.trim(),
-                category: editLocationCategory,
-                imageUrls: editLocationImageUrls,
-            });
-
-            setLocations((currentLocations) =>
-                currentLocations.map((location) =>
-                    location.id === updatedLocation.id ? updatedLocation : location
-                )
-            );
-            resetEditLocationForm();
-            setDetailsLocation(updatedLocation);
-        } catch (err) {
-            console.error("Failed to update location:", err);
-            setEditLocationError(getApiErrorMessage(err));
-        } finally {
-            setIsSavingEditLocation(false);
-        }
+      setLocations((currentLocations) =>
+        currentLocations.map((location) =>
+          location.id === updatedLocation.id ? updatedLocation : location
+        )
+      );
+      resetEditLocationForm();
+      setDetailsLocation(updatedLocation);
+    } catch (err) {
+      console.error("Failed to update location:", err);
+      setEditLocationError(getApiErrorMessage(err));
+    } finally {
+      setIsSavingEditLocation(false);
     }
+  }
 
-    async function handleDeleteLocation() {
-        if (!detailsLocation || !canEditDetailsLocation) return;
+  async function handleDeleteLocation() {
+    if (!detailsLocation || !canEditDetailsLocation) return;
 
-        try {
-            setIsDeletingLocation(true);
-            setDeleteLocationError(null);
+    try {
+      setIsDeletingLocation(true);
+      setDeleteLocationError(null);
 
-            await deleteLocation(detailsLocation.id);
+      await deleteLocation(detailsLocation.id);
 
-            setLocations((currentLocations) =>
-                currentLocations.filter((location) => location.id !== detailsLocation.id)
-            );
-            setSelectedLocation((currentLocation) =>
-                currentLocation?.id === detailsLocation.id ? null : currentLocation
-            );
-            setDetailsLocation(null);
-        } catch (err) {
-            console.error("Failed to delete location:", err);
-            setDeleteLocationError(getApiErrorMessage(err));
-        } finally {
-            setIsDeletingLocation(false);
-        }
+      setLocations((currentLocations) =>
+        currentLocations.filter((location) => location.id !== detailsLocation.id)
+      );
+      setSelectedLocation((currentLocation) =>
+        currentLocation?.id === detailsLocation.id ? null : currentLocation
+      );
+      setDetailsLocation(null);
+    } catch (err) {
+      console.error("Failed to delete location:", err);
+      setDeleteLocationError(getApiErrorMessage(err));
+    } finally {
+      setIsDeletingLocation(false);
     }
+  }
 
   if (loading) {
     return (
@@ -383,10 +501,14 @@ export default function MapScreen() {
   return (
     <View style={styles.container}>
       <HiddenGemsMap
-        locations={locations}
+        locations={filteredLocations}
         onMarkerPress={handleMarkerPress}
-        isPickingLocation={isPickingLocation}
+        isPickingLocation={isPickingMapPoint}
         onMapPress={handleMapPress}
+        isPickingSearchCenter={isPickingSearchCenter}
+        onNativeSearchCenterConfirm={confirmNativeSearchCenter}
+        searchCenter={searchCenter}
+        searchRadiusMiles={searchRadiusMiles}
       />
 
       <View style={styles.overlayContainer} pointerEvents="box-none">
@@ -394,9 +516,31 @@ export default function MapScreen() {
         {!isLocationSheetOpen && (
           <>
             <Pressable
-              style={styles.avatarButton}
+              style={[
+                styles.controlsButton,
+                { top: topControlOffset, left: MAP_HORIZONTAL_CONTROL_MARGIN },
+              ]}
               pointerEvents="auto"
-              onPress={() => setDropdownOpen((prev) => !prev)}
+              onPress={() => {
+                setDropdownOpen(false);
+                setControlsOpen(true);
+              }}
+            >
+              <View style={styles.hamburgerLine} />
+              <View style={styles.hamburgerLine} />
+              <View style={styles.hamburgerLine} />
+            </Pressable>
+
+            <Pressable
+              style={[
+                styles.avatarButton,
+                { top: topControlOffset, right: MAP_HORIZONTAL_CONTROL_MARGIN },
+              ]}
+              pointerEvents="auto"
+              onPress={() => {
+                setControlsOpen(false);
+                setDropdownOpen((prev) => !prev);
+              }}
             >
               <Image
                 source={
@@ -414,12 +558,135 @@ export default function MapScreen() {
                 onClose={() => setDropdownOpen(false)}
               />
             </View>
+
+            <Modal
+              visible={controlsOpen}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setControlsOpen(false)}
+            >
+              <View style={styles.controlsModalLayer}>
+                <Pressable
+                  style={styles.controlsBackdrop}
+                  onPress={() => setControlsOpen(false)}
+                />
+
+                <View style={[styles.controlsPanel, { top: controlsPanelTop }]}>
+                  <View style={styles.controlsHeader}>
+                    <Text style={styles.controlsTitle}>Controls</Text>
+                    <Pressable
+                      style={styles.controlsCloseButton}
+                      onPress={() => setControlsOpen(false)}
+                    >
+                      <Text style={styles.controlsCloseText}>x</Text>
+                    </Pressable>
+                  </View>
+
+                  <Text style={styles.controlsSubtitle}>Filters</Text>
+
+                  <View style={styles.filterGrid}>
+                    {CATEGORIES.map((category) => {
+                      const isActive = activeCategoryFilter === category.value;
+
+                      return (
+                        <Pressable
+                          key={category.value}
+                          style={[
+                            styles.filterButton,
+                            isActive && styles.filterButtonActive,
+                          ]}
+                          onPress={() => {
+                            setActiveCategoryFilter((currentFilter) =>
+                              currentFilter === category.value
+                                ? null
+                                : category.value
+                            );
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.filterButtonText,
+                              isActive && styles.filterButtonTextActive,
+                            ]}
+                          >
+                            {category.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+
+                  <View style={styles.controlsDivider} />
+
+                  <Text style={styles.controlsHint}>
+                    {activeCategoryFilter
+                      ? `Showing ${filteredLocations.length} ${getCategoryLabel(
+                        activeCategoryFilter
+                      )} ${filteredLocations.length === 1 ? "location" : "locations"
+                      }.`
+                      : "Choose a category to filter the map markers."}
+                  </Text>
+
+                  <View style={styles.controlsDivider} />
+
+                  <View style={styles.radiusHeader}>
+                    <Text style={styles.controlsSubtitle}>Distance</Text>
+                    <Text style={styles.radiusValue}>
+                      {formatRadiusMiles(searchRadiusMiles)}
+                    </Text>
+                  </View>
+
+                  <RadiusSlider
+                    value={searchRadiusMiles}
+                    onChange={setSearchRadiusMiles}
+                  />
+
+                  <Text style={styles.controlsHint}>
+                    {searchCenter
+                      ? `Showing spots within ${formatRadiusMiles(
+                        searchRadiusMiles
+                      )} of your center point.`
+                      : "Set a center point to apply the distance filter."}
+                  </Text>
+
+                </View>
+              </View>
+            </Modal>
           </>
         )}
 
         <Pressable
           style={[
+            styles.searchCenterButton,
+            { bottom: searchCenterButtonBottom },
+            isPickingSearchCenter && styles.searchCenterButtonActive,
+          ]}
+          onPress={
+            isPickingSearchCenter
+              ? () => setIsPickingSearchCenter(false)
+              : startPickingSearchCenter
+          }
+        >
+          {isPickingSearchCenter ? (
+            <Text
+              style={[
+                styles.searchCenterButtonText,
+                styles.searchCenterButtonTextActive,
+              ]}
+            >
+              x
+            </Text>
+          ) : (
+            <View style={styles.searchCenterTarget}>
+              <View style={styles.searchCenterTargetDot} />
+            </View>
+          )}
+        </Pressable>
+
+        <Pressable
+          style={[
             styles.addSpotButton,
+            { bottom: addSpotButtonBottom },
             isPickingLocation && styles.addSpotButtonActive,
           ]}
           onPress={
@@ -434,8 +701,18 @@ export default function MapScreen() {
         </Pressable>
 
         {isPickingLocation && (
-          <View style={styles.pickHint}>
+          <View style={[styles.pickHint, { bottom: addSpotButtonBottom + 8 }]}>
             <Text style={styles.pickHintText}>Click the map to place a spot</Text>
+          </View>
+        )}
+
+        {isPickingSearchCenter && (
+          <View style={[styles.pickHint, { bottom: searchCenterButtonBottom + 8 }]}>
+            <Text style={styles.pickHintText}>
+              {Platform.OS === "web"
+                ? "Click the map to set search center"
+                : "Move the map to choose a center"}
+            </Text>
           </View>
         )}
 
@@ -454,7 +731,9 @@ export default function MapScreen() {
             <View style={styles.previewContent}>
               <View style={styles.previewTextContainer}>
                 <Text style={styles.previewTitle}>{selectedLocation.name}</Text>
-                <Text style={styles.previewText}>{selectedLocation.category}</Text>
+                <Text style={styles.previewText}>
+                  {getCategoryLabel(selectedLocation.category)}
+                </Text>
                 <Text style={styles.previewText}>
                   Rating: {selectedLocation.avgRating ?? 0}
                 </Text>
@@ -484,17 +763,17 @@ export default function MapScreen() {
           onClose={resetAddSpotForm}
         />
 
-            <LocationDetailsSheet
-                location={draftCoordinates || editingLocation ? null : detailsLocation}
-                canEditLocation={canEditDetailsLocation}
-                isDeletingLocation={isDeletingLocation}
-                deleteError={deleteLocationError}
-                onClose={() => setDetailsLocation(null)}
-                onEditPress={() => {
-                    if (detailsLocation) startEditingLocation(detailsLocation);
-                }}
-                onDeleteConfirm={handleDeleteLocation}
-            />
+        <LocationDetailsSheet
+          location={draftCoordinates || editingLocation ? null : detailsLocation}
+          canEditLocation={canEditDetailsLocation}
+          isDeletingLocation={isDeletingLocation}
+          deleteError={deleteLocationError}
+          onClose={() => setDetailsLocation(null)}
+          onEditPress={() => {
+            if (detailsLocation) startEditingLocation(detailsLocation);
+          }}
+          onDeleteConfirm={handleDeleteLocation}
+        />
 
         <EditLocationSheet
           location={editingLocation}
@@ -519,143 +798,314 @@ export default function MapScreen() {
   );
 }
 
-      const styles = StyleSheet.create({
-        container: {
-        flex: 1,
-      position: "relative",
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    position: "relative",
   },
 
-      overlayContainer: {
-        ...StyleSheet.absoluteFillObject,
-        pointerEvents: "box-none",
-      zIndex: 10000,
-      elevation: 10000,
+  overlayContainer: {
+    ...StyleSheet.absoluteFillObject,
+    pointerEvents: "box-none",
+    zIndex: 10000,
+    elevation: 10000,
   },
 
-      center: {
-        flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
-      text: {
-        fontSize: 16,
-      marginTop: 8,
+  text: {
+    fontSize: 16,
+    marginTop: 8,
   },
 
-      error: {
-        fontSize: 16,
-      color: "red",
+  error: {
+    fontSize: 16,
+    color: "red",
   },
-      addSpotButton: {
-        position: "absolute",
-      right: 18,
-      bottom: 28,
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: "#111827",
-      shadowColor: "#000",
-      shadowOpacity: 0.22,
-      shadowRadius: 8,
-      elevation: 6,
-      zIndex: 10000,
-    },
-      addSpotButtonActive: {
-        backgroundColor: "#2563eb",
-    },
-      addSpotButtonText: {
-        color: "white",
-      fontSize: 34,
-      lineHeight: 38,
-      fontWeight: "700",
-    },
-      pickHint: {
-        position: "absolute",
-      right: 86,
-      bottom: 36,
-      backgroundColor: "#111827",
-      borderRadius: 999,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      zIndex: 9999,
-    },
-      pickHintText: {
-        color: "white",
-      fontSize: 14,
-      fontWeight: "700",
-    },
-      avatarButton: {
-        position: "absolute",
-      top: 15,
-      right: 20,
-      zIndex: 10001,
+  controlsButton: {
+    position: "absolute",
+    top: 15,
+    left: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "white",
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 6,
+    zIndex: 10001,
+  },
+  hamburgerLine: {
+    width: 20,
+    height: 2,
+    borderRadius: 999,
+    backgroundColor: "#111827",
+    marginVertical: 2,
+  },
+  controlsModalLayer: {
+    flex: 1,
+  },
+  controlsBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(17,24,39,0.18)",
+  },
+  controlsPanel: {
+    position: "absolute",
+    top: 72,
+    left: 16,
+    right: 16,
+    width: "auto",
+    maxWidth: 460,
+    minHeight: 360,
+    borderRadius: 14,
+    backgroundColor: "white",
+    padding: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.24,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 12,
+  },
+  controlsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  controlsTitle: {
+    color: "#111827",
+    fontSize: 24,
+    fontWeight: "800",
+  },
+  controlsCloseButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f3f4f6",
+  },
+  controlsCloseText: {
+    color: "#111827",
+    fontSize: 18,
+    fontWeight: "800",
+    lineHeight: 20,
+  },
+  controlsSubtitle: {
+    color: "#6b7280",
+    fontSize: 13,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    marginBottom: 10,
+  },
+  filterGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 14,
+  },
+  filterButton: {
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    borderRadius: 999,
+    backgroundColor: "white",
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    marginBottom: 14,
+  },
+  filterButtonActive: {
+    borderColor: "#2563eb",
+    backgroundColor: "#2563eb",
+  },
+  filterButtonText: {
+    color: "#111827",
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  filterButtonTextActive: {
+    color: "white",
+  },
+  controlsDivider: {
+    height: 1,
+    backgroundColor: "#e5e7eb",
+    marginVertical: 8,
+  },
+  controlsHint: {
+    color: "#4b5563",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  radiusHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  radiusValue: {
+    color: "#111827",
+    fontSize: 15,
+    fontWeight: "800",
+    marginBottom: 10,
+  },
+  addSpotButton: {
+    position: "absolute",
+    right: 18,
+    bottom: 28,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#111827",
+    shadowColor: "#000",
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 10000,
+  },
+  addSpotButtonActive: {
+    backgroundColor: "#2563eb",
+  },
+  addSpotButtonText: {
+    color: "white",
+    fontSize: 34,
+    lineHeight: 38,
+    fontWeight: "700",
+  },
+  searchCenterButton: {
+    position: "absolute",
+    right: 18,
+    bottom: 96,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "white",
+    shadowColor: "#000",
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    elevation: 6,
+    zIndex: 10000,
+  },
+  searchCenterButtonActive: {
+    backgroundColor: "#2563eb",
+  },
+  searchCenterButtonText: {
+    color: "#111827",
+    fontSize: 32,
+    lineHeight: 36,
+    fontWeight: "800",
+  },
+  searchCenterButtonTextActive: {
+    color: "white",
+  },
+  searchCenterTarget: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 3,
+    borderColor: "#111827",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  searchCenterTargetDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#111827",
+  },
+  pickHint: {
+    position: "absolute",
+    right: 86,
+    bottom: 36,
+    backgroundColor: "#111827",
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    zIndex: 9999,
+  },
+  pickHintText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  avatarButton: {
+    position: "absolute",
+    top: 15,
+    right: 20,
+    zIndex: 10001,
   },
 
-      avatar: {
-        width: 44,
-      height: 44,
-      borderRadius: 22,
-      borderWidth: 2,
-      borderColor: "white",
-      backgroundColor: "#eee",
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: "white",
+    backgroundColor: "#eee",
   },
-      previewCard: {
-        position: "absolute",
-      left: 16,
-      right: 16,
-      bottom: 24,
-      backgroundColor: "white",
-      borderRadius: 16,
-      padding: 16,
+  previewCard: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 24,
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 16,
 
-      shadowColor: "#000",
-      shadowOpacity: 0.2,
-      shadowRadius: 8,
-      elevation: 5,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
 
-      zIndex: 9999,
-      cursor: "pointer"
+    zIndex: 9999,
+    cursor: "pointer"
   },
 
-      previewContent: {
-        flexDirection: "row",
-        alignItems: "center", // 👈 key fix
-        justifyContent: "space-between",
-    },
-
-    previewTextContainer: {
-        flex: 1,
-    },
-
-    chevron: {
-        fontSize: 28,
-      fontWeight: "700",
-      color: "#6b7280",
-      marginLeft: 12,
+  previewContent: {
+    flexDirection: "row",
+    alignItems: "center", // 👈 key fix
+    justifyContent: "space-between",
   },
-      previewTitle: {
-        fontSize: 18,
-      fontWeight: "700",
+
+  previewTextContainer: {
+    flex: 1,
   },
-      previewText: {
-        fontSize: 14,
-        marginTop: 4,
-    },
-    closeButton: {
-        position: "absolute",
-        top: 10,
-        right: 14,
-        fontSize: 20,
-        fontWeight: "700",
-        zIndex: 10000,
-    },
-    detailsButton: {
-        marginTop: 12,
-        fontSize: 16,
-        fontWeight: "700",
-        color: "#2563eb",
-    },
+
+  chevron: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#6b7280",
+    marginLeft: 12,
+  },
+  previewTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  previewText: {
+    fontSize: 14,
+    marginTop: 4,
+  },
+  closeButton: {
+    position: "absolute",
+    top: 10,
+    right: 14,
+    fontSize: 20,
+    fontWeight: "700",
+    zIndex: 10000,
+  },
+  detailsButton: {
+    marginTop: 12,
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#2563eb",
+  },
 });

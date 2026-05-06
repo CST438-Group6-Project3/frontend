@@ -14,10 +14,14 @@ module.exports = {
     ],
   },
   moduleFileExtensions: ["web.tsx", "web.ts", "tsx", "ts", "jsx", "js"],
+  moduleNameMapper: {
+    "^react-native$": "react-native-web",
+  },
   testMatch: ["<rootDir>/src/**/*.test.ts", "<rootDir>/src/**/*.test.tsx"],
   collectCoverageFrom: [
     "src/api/**/*.{ts,tsx}",
     "src/components/location/AddSpotSheet.web.tsx",
+    "src/components/map/RadiusSlider.tsx",
     "!src/**/*.native.{ts,tsx}",
   ],
   coverageThreshold: {

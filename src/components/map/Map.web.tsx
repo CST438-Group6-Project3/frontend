@@ -1,6 +1,14 @@
 import "leaflet/dist/leaflet.css";
-import { useEffect, useState } from "react";
-import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
+import React, { useEffect, useState } from "react";
+import {
+  Circle,
+  MapContainer,
+  Marker,
+  TileLayer,
+  useMap,
+  useMapEvents,
+  ZoomControl,
+} from "react-leaflet";
 import type { LocationResponse } from "../../api/locations";
 
 import L from "leaflet";
@@ -19,7 +27,12 @@ type HiddenGemsMapProps = {
   locations: LocationResponse[];
   onMarkerPress: (location: LocationResponse) => void;
   isPickingLocation?: boolean;
+  isPickingSearchCenter?: boolean;
   onMapPress?: (coordinates: { lat: number; lng: number }) => void;
+  onCameraCenterChange?: (coordinates: { lat: number; lng: number }) => void;
+  onNativeSearchCenterConfirm?: (coordinates: { lat: number; lng: number }) => void;
+  searchCenter?: { lat: number; lng: number } | null;
+  searchRadiusMiles?: number;
 };
 
 type HoverCoordinates = {
@@ -31,6 +44,20 @@ type HoverCoordinates = {
 
 const addSpotCursor =
   'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2717%27 height=%2717%27 viewBox=%270 0 17 17%27%3E%3Cpath d=%27M8.5 2v13M2 8.5h13%27 stroke=%27%23000%27 stroke-width=%272%27 stroke-linecap=%27round%27/%3E%3Cpath d=%27M8.5 2v13M2 8.5h13%27 stroke=%27%23fff%27 stroke-width=%271%27 stroke-linecap=%27round%27/%3E%3C/svg%3E") 8 8, crosshair';
+
+const DEFAULT_US_CENTER: [number, number] = [39.8283, -98.5795];
+const DEFAULT_US_ZOOM = 4;
+const SEARCH_CENTER_VIEW_RADIUS_METERS = 100 * 1609.344;
+const METERS_PER_MILE = 1609.344;
+const LOCATION_MARKER_Z_INDEX_OFFSET = 1000;
+const SEARCH_CENTER_MARKER_Z_INDEX_OFFSET = 0;
+
+const searchCenterIcon = L.divIcon({
+  className: "hidden-gems-search-center-icon",
+  html: '<div class="hidden-gems-search-center-pin"><div class="hidden-gems-search-center-dot"></div></div>',
+  iconSize: [34, 34],
+  iconAnchor: [17, 17],
+});
 
 function MapClickHandler({
   enabled,
@@ -83,17 +110,81 @@ function MapClickHandler({
   return null;
 }
 
+function SearchCenterController({
+  searchCenter,
+  searchRadiusMiles,
+}: {
+  searchCenter?: { lat: number; lng: number } | null;
+  searchRadiusMiles?: number;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!searchCenter) return;
+
+    const bounds = L.latLng(searchCenter.lat, searchCenter.lng).toBounds(
+      SEARCH_CENTER_VIEW_RADIUS_METERS * 2
+    );
+    const targetZoom = map.getBoundsZoom(bounds, false, L.point(32, 32));
+
+    if (map.getZoom() > targetZoom) {
+      map.setView([searchCenter.lat, searchCenter.lng], map.getZoom(), {
+        animate: true,
+      });
+      return;
+    }
+
+    map.fitBounds(bounds, {
+      animate: true,
+      padding: [32, 32],
+    });
+  }, [map, searchCenter]);
+
+  if (!searchCenter) return null;
+
+  return (
+    <>
+      {searchRadiusMiles && (
+        <Circle
+          center={[searchCenter.lat, searchCenter.lng]}
+          radius={searchRadiusMiles * METERS_PER_MILE}
+          pathOptions={{
+            color: "#2563eb",
+            fillColor: "#2563eb",
+            fillOpacity: 0.06,
+            opacity: 0.35,
+            weight: 1,
+          }}
+          interactive={false}
+        />
+      )}
+      <Marker
+        position={[searchCenter.lat, searchCenter.lng]}
+        icon={searchCenterIcon}
+        interactive={false}
+        zIndexOffset={SEARCH_CENTER_MARKER_Z_INDEX_OFFSET}
+      />
+    </>
+  );
+}
+
 export default function HiddenGemsMap({
   locations,
   onMarkerPress,
   isPickingLocation = false,
+  isPickingSearchCenter: _isPickingSearchCenter = false,
   onMapPress,
+  onCameraCenterChange: _onCameraCenterChange,
+  onNativeSearchCenterConfirm: _onNativeSearchCenterConfirm,
+  searchCenter,
+  searchRadiusMiles,
 }: HiddenGemsMapProps) {
   const [hoverCoordinates, setHoverCoordinates] =
     useState<HoverCoordinates | null>(null);
 
   return (
     <div
+      className="hidden-gems-map"
       style={{
         position: "relative",
         height: "100vh",
@@ -101,19 +192,64 @@ export default function HiddenGemsMap({
         cursor: isPickingLocation ? addSpotCursor : "grab",
       }}
     >
+      <style>
+        {`
+          .hidden-gems-map .leaflet-control-container .leaflet-top.leaflet-right {
+            top: 72px;
+            right: 20px;
+          }
+
+          .hidden-gems-map .leaflet-control-container .leaflet-top.leaflet-right .leaflet-control {
+            margin-top: 0;
+            margin-right: 0;
+          }
+
+          .hidden-gems-search-center-icon {
+            background: transparent;
+            border: none;
+          }
+
+          .hidden-gems-search-center-pin {
+            width: 34px;
+            height: 34px;
+            border-radius: 999px;
+            background: rgba(37, 99, 235, 0.18);
+            border: 3px solid #2563eb;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .hidden-gems-search-center-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            background: #2563eb;
+            border: 2px solid white;
+          }
+        `}
+      </style>
       <MapContainer
-        center={[36.653, -121.797]}
-        zoom={13}
+        center={DEFAULT_US_CENTER}
+        zoom={DEFAULT_US_ZOOM}
+        zoomControl={false}
         style={{
           height: "100%",
           width: "100%",
           cursor: isPickingLocation ? addSpotCursor : undefined,
         }}
       >
+        <ZoomControl position="topright" />
+
         <MapClickHandler
           enabled={isPickingLocation}
           onMapPress={onMapPress}
           onHover={setHoverCoordinates}
+        />
+        <SearchCenterController
+          searchCenter={searchCenter}
+          searchRadiusMiles={searchRadiusMiles}
         />
 
         <TileLayer
@@ -124,6 +260,7 @@ export default function HiddenGemsMap({
         {locations.map((location) => (
           <Marker key={location.id}
             position={[location.lat, location.lng]}
+            zIndexOffset={LOCATION_MARKER_Z_INDEX_OFFSET}
             eventHandlers={{
               click: () => onMarkerPress(location),
             }}

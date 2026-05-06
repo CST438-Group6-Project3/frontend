@@ -1,6 +1,6 @@
 import React from "react";
 import { useState } from "react";
-import type { LocationResponse } from "../../api/locations";
+import type { LocationCategory, LocationResponse } from "../../api/locations";
 
 type Props = {
   location: LocationResponse | null;
@@ -11,6 +11,20 @@ type Props = {
   onEditPress?: () => void;
   onDeleteConfirm?: () => void;
 };
+
+const CATEGORY_LABELS: Record<LocationCategory, string> = {
+  study_spot: "Study",
+  food: "Food",
+  scenic: "Scenic",
+  hangout: "Hangout",
+  trail: "Trail",
+  activity: "Activity",
+  other: "Other",
+};
+
+function getCategoryLabel(category: LocationCategory) {
+  return CATEGORY_LABELS[category] ?? category;
+}
 
 export default function LocationDetailsSheet({
   location,
@@ -126,7 +140,7 @@ export default function LocationDetailsSheet({
       <p>{location.description || "No description yet."}</p>
 
       <p>
-        <strong>Category:</strong> {location.category}
+        <strong>Category:</strong> {getCategoryLabel(location.category)}
       </p>
 
       <p>

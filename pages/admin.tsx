@@ -7,8 +7,10 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import axios from "axios";
 import { supabase } from "../lib/supabaseClient";
 import type { LocationResponse } from "../src/api/locations";
@@ -27,6 +29,7 @@ type LocationStatus = "pending" | "verified" | "archived";
 
 export default function Admin() {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
 
   const [users, setUsers] = useState<User[]>([]);
   const [locations, setLocations] = useState<LocationResponse[]>([]);
@@ -167,7 +170,13 @@ export default function Admin() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[
+        styles.content,
+        { paddingTop: Math.max(16, insets.top + 12) },
+      ]}
+    >
       {/* BACK BUTTON */}
       <Pressable
         onPress={() => navigation.goBack()}
@@ -183,15 +192,20 @@ export default function Admin() {
       {users.map((user) => (
         <View key={user.id} style={styles.card}>
           <View style={styles.row}>
-            {user.avatarUrl ? (
-              <img src={user.avatarUrl} style={styles.avatar as any} />
-            ) : (
-              <View style={styles.avatarFallback}>
-                <Text style={styles.avatarText}>
-                  {user.email[0].toUpperCase()}
-                </Text>
-              </View>
-            )}
+            {
+              user.avatarUrl ? (
+                <Image
+                  source={{ uri: user.avatarUrl }}
+                  style={styles.avatar}
+                />
+              ) : (
+                <View style={styles.avatarFallback}>
+                  <Text style={styles.avatarText}>
+                    {user.email[0].toUpperCase()}
+                  </Text>
+                </View>
+              )
+            }
 
             <View style={{ flex: 1 }}>
               <Text style={styles.email}>{user.email}</Text>
@@ -270,7 +284,8 @@ export default function Admin() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16 },
+  container: { flex: 1 },
+  content: { padding: 16 },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
 
   backButton: { marginBottom: 10 },

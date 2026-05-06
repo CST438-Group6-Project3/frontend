@@ -9,12 +9,17 @@ import {
   TouchableOpacity,
   Platform,
   Alert,
+  StyleSheet,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../auth/AuthProvider';
 
 export default function ProfileScreen() {
+  const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const { user, session } = useAuth();
 
   const [name, setName] = useState('');
@@ -139,7 +144,19 @@ export default function ProfileScreen() {
   if (!user) return <ActivityIndicator />;
 
   return (
-    <View style={{ flex: 1, padding: 20, maxWidth: 500, alignSelf: 'center' }}>
+    <View
+      style={[
+        styles.container,
+        { paddingTop: Math.max(20, insets.top + 12) },
+      ]}
+    >
+      <TouchableOpacity
+        onPress={() => navigation.goBack()}
+        style={styles.backButton}
+      >
+        <Text style={styles.backText}>← Back</Text>
+      </TouchableOpacity>
+
       <Text style={{ fontSize: 24, marginBottom: 20 }}>Profile</Text>
 
       <TouchableOpacity onPress={pickImage}>
@@ -180,3 +197,22 @@ export default function ProfileScreen() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    maxWidth: 500,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  backButton: {
+    marginBottom: 10,
+  },
+  backText: {
+    fontSize: 16,
+    color: '#2563eb',
+    fontWeight: '600',
+  },
+});
