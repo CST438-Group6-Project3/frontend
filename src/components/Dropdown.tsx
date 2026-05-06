@@ -38,6 +38,19 @@ export default function Dropdown({
     }
   }
 
+  async function handleLogout() {
+    try {
+      await supabase.auth.signOut();
+      onClose();
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "Login" }],
+      });
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  }
+
   if (!visible) return null;
 
   return (
@@ -59,7 +72,6 @@ export default function Dropdown({
           <Pressable
             style={styles.item}
             onPress={() => {
-              console.log("ADMIN CLICKED");
               onClose();
               navigation.navigate("Admin");
             }}
@@ -68,11 +80,7 @@ export default function Dropdown({
           </Pressable>
         )}
 
-        <Pressable style={styles.item}>
-          <Text>Settings</Text>
-        </Pressable>
-
-        <Pressable style={styles.item}>
+        <Pressable style={styles.item} onPress={handleLogout}>
           <Text style={{ color: "red" }}>Logout</Text>
         </Pressable>
       </View>
