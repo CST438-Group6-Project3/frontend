@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8080/api";
+const API_BASE_URL = "http://localhost:8080/api" ?? process.env.EXPO_PUBLIC_API_URL ;
 
 export type LocationResponse = {
   id: string;
