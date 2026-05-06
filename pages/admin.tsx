@@ -12,7 +12,7 @@ import axios from "axios";
 import { supabase } from "../lib/supabaseClient";
 import type { LocationResponse } from "../src/api/locations";
 
-const API_BASE_URL = "http://localhost:8080/api";
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8080/api";
 
 type User = {
   id: string;
