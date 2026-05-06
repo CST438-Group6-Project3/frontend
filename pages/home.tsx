@@ -3,11 +3,11 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert, Platform } from 'react
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../auth/AuthProvider';
 import { supabase } from '../lib/supabaseClient';
-
+//preview
 export default function Home() {
   const navigation = useNavigation();
   const { session, user } = useAuth(); // current auth user and profile
-//preview
+
   useEffect(() => {
     // only if on web and when user is logged in
     if (Platform.OS !== 'web' || !session) return;
