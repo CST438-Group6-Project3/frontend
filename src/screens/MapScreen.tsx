@@ -166,7 +166,7 @@ function RadiusSlider({ value, onChange }: RadiusSliderProps) {
         ref={trackRef}
         style={styles.radiusSliderTrack}
         onLayout={() => {
-          requestAnimationFrame(measureTrack);
+          requestAnimationFrame(() => measureTrack());
         }}
         {...panResponder.panHandlers}
       >
