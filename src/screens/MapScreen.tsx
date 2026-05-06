@@ -734,9 +734,15 @@ export default function MapScreen() {
                 <Text style={styles.previewText}>
                   {getCategoryLabel(selectedLocation.category)}
                 </Text>
+
                 <Text style={styles.previewText}>
                   Rating: {selectedLocation.avgRating ?? 0}
                 </Text>
+
+                <Text style={{ marginTop: 10, fontWeight: "bold" }}>
+                  Reviews
+                </Text>
+
               </View>
 
               <Text style={styles.chevron}>{">"}</Text>
