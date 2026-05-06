@@ -25,6 +25,7 @@ import {
   SpotImageUpload,
   uploadLocationImages,
 } from "../api/imageUploads";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import HiddenGemsMap from "../components/map";
 import AddSpotSheet from "../components/location/AddSpotSheet";
 import LocationDetailsSheet from "../components/location";
@@ -55,6 +56,9 @@ const MIN_RADIUS_MILES = 10;
 const MAX_RADIUS_MILES = 100;
 const RADIUS_STEP_MILES = 5;
 const EARTH_RADIUS_MILES = 3958.8;
+const MAP_TOP_CONTROL_MARGIN = 12;
+const MAP_HORIZONTAL_CONTROL_MARGIN = 20;
+const CONTROLS_PANEL_VERTICAL_GAP = 12;
 
 type DraftSpotCoordinates = {
   lat: number;
@@ -185,6 +189,7 @@ function RadiusSlider({ value, onChange }: RadiusSliderProps) {
 
 export default function MapScreen() {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const [locations, setLocations] = useState<LocationResponse[]>([]);
   const [selectedLocation, setSelectedLocation] =
     useState<LocationResponse | null>(null);
@@ -235,6 +240,9 @@ export default function MapScreen() {
     : ADD_SPOT_BUTTON_BOTTOM;
   const searchCenterButtonBottom =
     addSpotButtonBottom + MAP_ACTION_BUTTON_SIZE + MAP_ACTION_BUTTON_GAP;
+  const topControlOffset = Math.max(15, insets.top + MAP_TOP_CONTROL_MARGIN);
+  const controlsPanelTop =
+    topControlOffset + 44 + CONTROLS_PANEL_VERTICAL_GAP;
   // TODO: Move category/radius filtering to the backend once location volume grows.
   const filteredLocations = locations.filter((location) => {
     if (activeCategoryFilter && location.category !== activeCategoryFilter) {
@@ -599,7 +607,10 @@ export default function MapScreen() {
         {!isLocationSheetOpen && (
           <>
             <Pressable
-              style={styles.controlsButton}
+              style={[
+                styles.controlsButton,
+                { top: topControlOffset, left: MAP_HORIZONTAL_CONTROL_MARGIN },
+              ]}
               pointerEvents="auto"
               onPress={() => {
                 setDropdownOpen(false);
@@ -612,7 +623,10 @@ export default function MapScreen() {
             </Pressable>
 
             <Pressable
-              style={styles.avatarButton}
+              style={[
+                styles.avatarButton,
+                { top: topControlOffset, right: MAP_HORIZONTAL_CONTROL_MARGIN },
+              ]}
               pointerEvents="auto"
               onPress={() => {
                 setControlsOpen(false);
@@ -648,7 +662,7 @@ export default function MapScreen() {
                   onPress={() => setControlsOpen(false)}
                 />
 
-                <View style={styles.controlsPanel}>
+                <View style={[styles.controlsPanel, { top: controlsPanelTop }]}>
                   <View style={styles.controlsHeader}>
                     <Text style={styles.controlsTitle}>Controls</Text>
                     <Pressable

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 import MapView, { Circle, Marker, MapPressEvent, Region } from "react-native-maps";
-import type { LocationResponse } from "../../api/locations";
+import type { LocationCategory, LocationResponse } from "../../api/locations";
 
 const DEFAULT_US_REGION = {
     latitude: 39.8283,
@@ -14,6 +14,20 @@ const MILES_PER_LATITUDE_DEGREE = 69;
 const METERS_PER_MILE = 1609.344;
 const LOCATION_MARKER_Z_INDEX = 1000;
 const SEARCH_CENTER_MARKER_Z_INDEX = 1;
+
+const CATEGORY_LABELS: Record<LocationCategory, string> = {
+    study_spot: "Study",
+    food: "Food",
+    scenic: "Scenic",
+    hangout: "Hangout",
+    trail: "Trail",
+    activity: "Activity",
+    other: "Other",
+};
+
+function getCategoryLabel(category: LocationCategory) {
+    return CATEGORY_LABELS[category] ?? category;
+}
 
 type Props = {
     locations: LocationResponse[];
@@ -80,7 +94,7 @@ export default function HiddenGemsMap({
                             longitude: location.lng,
                         }}
                         title={location.name}
-                        description={location.category}
+                        description={getCategoryLabel(location.category)}
                         zIndex={LOCATION_MARKER_Z_INDEX}
                         onPress={() => onMarkerPress(location)}
                     />
