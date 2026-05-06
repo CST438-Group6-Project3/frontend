@@ -4,6 +4,7 @@ import {
   MapContainer,
   Marker,
   TileLayer,
+  useMap,
   useMapEvents,
   ZoomControl,
 } from "react-leaflet";
@@ -26,6 +27,7 @@ type HiddenGemsMapProps = {
   onMarkerPress: (location: LocationResponse) => void;
   isPickingLocation?: boolean;
   onMapPress?: (coordinates: { lat: number; lng: number }) => void;
+  searchCenter?: { lat: number; lng: number } | null;
 };
 
 type HoverCoordinates = {
@@ -37,6 +39,13 @@ type HoverCoordinates = {
 
 const addSpotCursor =
   'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2717%27 height=%2717%27 viewBox=%270 0 17 17%27%3E%3Cpath d=%27M8.5 2v13M2 8.5h13%27 stroke=%27%23000%27 stroke-width=%272%27 stroke-linecap=%27round%27/%3E%3Cpath d=%27M8.5 2v13M2 8.5h13%27 stroke=%27%23fff%27 stroke-width=%271%27 stroke-linecap=%27round%27/%3E%3C/svg%3E") 8 8, crosshair';
+
+const searchCenterIcon = L.divIcon({
+  className: "hidden-gems-search-center-icon",
+  html: '<div class="hidden-gems-search-center-pin"><div class="hidden-gems-search-center-dot"></div></div>',
+  iconSize: [34, 34],
+  iconAnchor: [17, 17],
+});
 
 function MapClickHandler({
   enabled,
@@ -89,11 +98,38 @@ function MapClickHandler({
   return null;
 }
 
+function SearchCenterController({
+  searchCenter,
+}: {
+  searchCenter?: { lat: number; lng: number } | null;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!searchCenter) return;
+
+    map.setView([searchCenter.lat, searchCenter.lng], map.getZoom(), {
+      animate: true,
+    });
+  }, [map, searchCenter]);
+
+  if (!searchCenter) return null;
+
+  return (
+    <Marker
+      position={[searchCenter.lat, searchCenter.lng]}
+      icon={searchCenterIcon}
+      interactive={false}
+    />
+  );
+}
+
 export default function HiddenGemsMap({
   locations,
   onMarkerPress,
   isPickingLocation = false,
   onMapPress,
+  searchCenter,
 }: HiddenGemsMapProps) {
   const [hoverCoordinates, setHoverCoordinates] =
     useState<HoverCoordinates | null>(null);
@@ -119,6 +155,31 @@ export default function HiddenGemsMap({
             margin-top: 0;
             margin-right: 0;
           }
+
+          .hidden-gems-search-center-icon {
+            background: transparent;
+            border: none;
+          }
+
+          .hidden-gems-search-center-pin {
+            width: 34px;
+            height: 34px;
+            border-radius: 999px;
+            background: rgba(37, 99, 235, 0.18);
+            border: 3px solid #2563eb;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .hidden-gems-search-center-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            background: #2563eb;
+            border: 2px solid white;
+          }
         `}
       </style>
       <MapContainer
@@ -138,6 +199,7 @@ export default function HiddenGemsMap({
           onMapPress={onMapPress}
           onHover={setHoverCoordinates}
         />
+        <SearchCenterController searchCenter={searchCenter} />
 
         <TileLayer
           attribution='&copy; OpenStreetMap contributors'

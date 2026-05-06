@@ -63,6 +63,10 @@ export default function MapScreen() {
   const [detailsLocation, setDetailsLocation] =
     useState<LocationResponse | null>(null);
   const [isPickingLocation, setIsPickingLocation] = useState(false);
+  const [isPickingSearchCenter, setIsPickingSearchCenter] = useState(false);
+  const [searchCenter, setSearchCenter] = useState<DraftSpotCoordinates | null>(
+    null
+  );
   const [draftCoordinates, setDraftCoordinates] =
     useState<DraftSpotCoordinates | null>(null);
   const [newSpotName, setNewSpotName] = useState("");
@@ -101,6 +105,7 @@ export default function MapScreen() {
   const filteredLocations = activeCategoryFilter
     ? locations.filter((location) => location.category === activeCategoryFilter)
     : locations;
+  const isPickingMapPoint = isPickingLocation || isPickingSearchCenter;
 
   useEffect(() => {
     async function loadLocations() {
@@ -139,7 +144,7 @@ export default function MapScreen() {
 
   function handleMarkerPress(location: LocationResponse) {
     setDropdownOpen(false);
-    if (isPickingLocation) return;
+    if (isPickingMapPoint) return;
 
     if (draftCoordinates) {
       resetAddSpotForm();
@@ -162,6 +167,7 @@ export default function MapScreen() {
 
     function startPickingLocation() {
         setControlsOpen(false);
+        setIsPickingSearchCenter(false);
         setSelectedLocation(null);
         setDetailsLocation(null);
         setDraftCoordinates(null);
@@ -169,7 +175,22 @@ export default function MapScreen() {
         setIsPickingLocation(true);
     }
 
+    function startPickingSearchCenter() {
+        setControlsOpen(false);
+        setIsPickingLocation(false);
+        setSelectedLocation(null);
+        setDetailsLocation(null);
+        setDraftCoordinates(null);
+        setIsPickingSearchCenter(true);
+    }
+
     function handleMapPress(coordinates: DraftSpotCoordinates) {
+        if (isPickingSearchCenter) {
+            setSearchCenter(coordinates);
+            setIsPickingSearchCenter(false);
+            return;
+        }
+
         if (!isPickingLocation) return;
 
         setDetailsLocation(null);
@@ -416,8 +437,9 @@ export default function MapScreen() {
       <HiddenGemsMap
         locations={filteredLocations}
         onMarkerPress={handleMarkerPress}
-        isPickingLocation={isPickingLocation}
+        isPickingLocation={isPickingMapPoint}
         onMapPress={handleMapPress}
+        searchCenter={searchCenter}
       />
 
       <View style={styles.overlayContainer} pointerEvents="box-none">
@@ -530,6 +552,29 @@ export default function MapScreen() {
                         }.`
                       : "Choose a category to filter the map markers."}
                   </Text>
+
+                  <View style={styles.controlsDivider} />
+
+                  <Text style={styles.controlsSubtitle}>Search center</Text>
+
+                  <Pressable
+                    style={styles.controlsAction}
+                    onPress={startPickingSearchCenter}
+                  >
+                    <Text style={styles.controlsActionTitle}>
+                      {searchCenter ? "Move center point" : "Set center point"}
+                    </Text>
+                    <Text style={styles.controlsActionText}>
+                      Choose where radius-based search should start.
+                    </Text>
+                  </Pressable>
+
+                  {searchCenter && (
+                    <Text style={styles.controlsHint}>
+                      Center: {searchCenter.lat.toFixed(5)},{" "}
+                      {searchCenter.lng.toFixed(5)}
+                    </Text>
+                  )}
                 </View>
               </View>
             </Modal>
@@ -556,6 +601,12 @@ export default function MapScreen() {
         {isPickingLocation && (
           <View style={[styles.pickHint, { bottom: addSpotButtonBottom + 8 }]}>
             <Text style={styles.pickHintText}>Click the map to place a spot</Text>
+          </View>
+        )}
+
+        {isPickingSearchCenter && (
+          <View style={[styles.pickHint, { bottom: addSpotButtonBottom + 8 }]}>
+            <Text style={styles.pickHintText}>Click the map to set search center</Text>
           </View>
         )}
 
