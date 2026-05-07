@@ -1,5 +1,4 @@
-import React from "react";
-import { useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { LocationCategory, LocationResponse } from "../../api/locations";
 
 type Props = {
@@ -10,6 +9,17 @@ type Props = {
   onClose: () => void;
   onEditPress?: () => void;
   onDeleteConfirm?: () => void;
+};
+
+type Review = {
+  id: number;
+  userId: number;
+  locationId: number;
+  rating: number;
+  text: string;
+  upvotes?: number;
+  downvotes?: number;
+  createdAt?: string;
 };
 
 const CATEGORY_LABELS: Record<LocationCategory, string> = {
@@ -26,6 +36,11 @@ function getCategoryLabel(category: LocationCategory) {
   return CATEGORY_LABELS[category] ?? category;
 }
 
+function renderStars(rating: number) {
+  const safeRating = Math.max(0, Math.min(5, Math.round(rating || 0)));
+  return "★".repeat(safeRating) + "☆".repeat(5 - safeRating);
+}
+
 export default function LocationDetailsSheet({
   location,
   canEditLocation = false,
@@ -35,11 +50,47 @@ export default function LocationDetailsSheet({
   onEditPress,
   onDeleteConfirm,
 }: Props) {
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [showDeleteWarning, setShowDeleteWarning] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [isLoadingReviews, setIsLoadingReviews] = useState(false);
+  const [reviewsError, setReviewsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedImageIndex(0);
+    setReviews([]);
+    setReviewsError(null);
+  }, [location?.id]);
+
+  useEffect(() => {
+    if (!location?.id) return;
+
+    setIsLoadingReviews(true);
+    setReviewsError(null);
+
+    fetch(`http://localhost:8080/reviews/${location.id}`)
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Failed to load reviews");
+        }
+        return res.json();
+      })
+      .then((data: Review[]) => {
+        setReviews(data);
+      })
+      .catch((err) => {
+        console.error("Failed to load reviews:", err);
+        setReviews([]);
+        setReviewsError("Could not load reviews.");
+      })
+      .finally(() => {
+        setIsLoadingReviews(false);
+      });
+  }, [location?.id]);
+
   if (!location) return null;
 
   const imageUrls = location.imageUrls ?? [];
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [showDeleteWarning, setShowDeleteWarning] = useState(false);
   const mainImageUrl = imageUrls[selectedImageIndex];
 
   return (
@@ -151,6 +202,53 @@ export default function LocationDetailsSheet({
         <strong>Coordinates:</strong> {location.lat}, {location.lng}
       </p>
 
+      <div
+        style={{
+          borderTop: "1px solid #e5e7eb",
+          marginTop: 20,
+          paddingTop: 16,
+        }}
+      >
+        <h1 style={{ color: "red", fontSize: 40 }}>REVIEWS TEST</h1>
+        {isLoadingReviews ? (
+          <p>Loading reviews...</p>
+        ) : reviewsError ? (
+          <p style={{ color: "#dc2626", fontWeight: 700 }}>{reviewsError}</p>
+        ) : reviews.length === 0 ? (
+          <p style={{ color: "#6b7280" }}>No reviews yet.</p>
+        ) : (
+          reviews.map((review) => (
+            <div
+              key={review.id ?? `${review.userId}-${review.text}`}
+              style={{
+                border: "1px solid #e5e7eb",
+                borderRadius: 10,
+                padding: 12,
+                marginTop: 10,
+                backgroundColor: "#f9fafb",
+              }}
+            >
+              <div
+                style={{
+                  color: "#f59e0b",
+                  fontSize: 18,
+                  letterSpacing: 1,
+                  marginBottom: 4,
+                }}
+              >
+                {renderStars(review.rating)}
+              </div>
+
+              <p style={{ margin: "4px 0 8px" }}>{review.text}</p>
+
+              <small style={{ color: "#6b7280" }}>
+                User {review.userId} · {review.rating}/5
+              </small>
+            </div>
+          ))
+        )}
+      </div>
+
       {canEditLocation && (
         <div
           style={{
@@ -243,8 +341,8 @@ export default function LocationDetailsSheet({
                 marginTop: 10,
               }}
             >
-              This action is not reversible. The location and its details would be
-              permanently removed.
+              This action is not reversible. The location and its details would
+              be permanently removed.
             </p>
             {deleteError && (
               <p

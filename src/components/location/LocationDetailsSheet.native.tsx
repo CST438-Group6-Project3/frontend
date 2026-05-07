@@ -114,7 +114,7 @@ export default function LocationDetailsSheet({
 				<Text style={styles.text}>Category: {getCategoryLabel(location.category)}</Text>
 				<Text style={styles.text}>Rating: {location.avgRating ?? 0}</Text>
 				<Text style={styles.text}>
-					Coordinates: {location.lat}, {location.lng}
+  					Coordinates: {location.lat}, {location.lng} 
 				</Text>
 
 				{canEditLocation && (
