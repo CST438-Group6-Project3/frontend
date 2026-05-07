@@ -1,57 +1,36 @@
 import React, { useEffect, useState } from "react";
-import type { LocationCategory, LocationResponse } from "../../api/locations";
 
-type Props = {
-  location: LocationResponse | null;
-  canEditLocation?: boolean;
-  isDeletingLocation?: boolean;
-  deleteError?: string | null;
-  onClose: () => void;
-  onEditPress?: () => void;
-  onDeleteConfirm?: () => void;
-};
-
-type Review = {
+interface Location {
   id: number;
+  name: string;
+  description: string;
+  category: string;
+  lat: number;
+  lng: number;
+  avgRating?: number;
+  imageUrls?: string[];
+}
+
+interface Review {
+  id?: number;
   userId: number;
-  locationId: number;
   rating: number;
   text: string;
-  upvotes?: number;
-  downvotes?: number;
-  createdAt?: string;
-};
+}
 
-const CATEGORY_LABELS: Record<LocationCategory, string> = {
-  study_spot: "Study",
-  food: "Food",
-  scenic: "Scenic",
-  hangout: "Hangout",
-  trail: "Trail",
-  activity: "Activity",
-  other: "Other",
-};
-
-function getCategoryLabel(category: LocationCategory) {
-  return CATEGORY_LABELS[category] ?? category;
+interface Props {
+  location: Location | null;
+  onClose: () => void;
 }
 
 function renderStars(rating: number) {
-  const safeRating = Math.max(0, Math.min(5, Math.round(rating || 0)));
-  return "★".repeat(safeRating) + "☆".repeat(5 - safeRating);
+  const full = "★".repeat(rating);
+  const empty = "☆".repeat(5 - rating);
+  return full + empty;
 }
 
-export default function LocationDetailsSheet({
-  location,
-  canEditLocation = false,
-  isDeletingLocation = false,
-  deleteError = null,
-  onClose,
-  onEditPress,
-  onDeleteConfirm,
-}: Props) {
+export default function LocationDetailsSheet({ location, onClose }: Props) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [showDeleteWarning, setShowDeleteWarning] = useState(false);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoadingReviews, setIsLoadingReviews] = useState(false);
   const [reviewsError, setReviewsError] = useState<string | null>(null);
@@ -65,10 +44,16 @@ export default function LocationDetailsSheet({
   useEffect(() => {
     if (!location?.id) return;
 
+    const API_BASE_URL =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
+        ? "http://localhost:8080"
+        : "https://YOUR-BACKEND-RENDER-URL.onrender.com";
+
     setIsLoadingReviews(true);
     setReviewsError(null);
 
-    fetch(`http://localhost:8080/reviews/${location.id}`)
+    fetch(`${API_BASE_URL}/reviews/${location.id}`)
       .then((res) => {
         if (!res.ok) {
           throw new Error("Failed to load reviews");
@@ -188,10 +173,11 @@ export default function LocationDetailsSheet({
       )}
 
       <h2>{location.name}</h2>
-      <p>{location.description || "No description yet."}</p>
+
+      <p>{location.description}</p>
 
       <p>
-        <strong>Category:</strong> {getCategoryLabel(location.category)}
+        <strong>Category:</strong> {location.category}
       </p>
 
       <p>
@@ -209,11 +195,14 @@ export default function LocationDetailsSheet({
           paddingTop: 16,
         }}
       >
-        <h1 style={{ color: "red", fontSize: 40 }}>REVIEWS TEST</h1>
+        <h3 style={{ marginBottom: 10 }}>Reviews</h3>
+
         {isLoadingReviews ? (
           <p>Loading reviews...</p>
         ) : reviewsError ? (
-          <p style={{ color: "#dc2626", fontWeight: 700 }}>{reviewsError}</p>
+          <p style={{ color: "#dc2626", fontWeight: 700 }}>
+            {reviewsError}
+          </p>
         ) : reviews.length === 0 ? (
           <p style={{ color: "#6b7280" }}>No reviews yet.</p>
         ) : (
@@ -228,176 +217,14 @@ export default function LocationDetailsSheet({
                 backgroundColor: "#f9fafb",
               }}
             >
-              <div
-                style={{
-                  color: "#f59e0b",
-                  fontSize: 18,
-                  letterSpacing: 1,
-                  marginBottom: 4,
-                }}
-              >
-                {renderStars(review.rating)}
-              </div>
-
-              <p style={{ margin: "4px 0 8px" }}>{review.text}</p>
-
-              <small style={{ color: "#6b7280" }}>
-                User {review.userId} · {review.rating}/5
-              </small>
+              <p style={{ fontWeight: "bold", margin: 0 }}>
+                User {review.userId} — {renderStars(review.rating)}
+              </p>
+              <p style={{ marginTop: 5 }}>{review.text}</p>
             </div>
           ))
         )}
       </div>
-
-      {canEditLocation && (
-        <div
-          style={{
-            borderTop: "1px solid #e5e7eb",
-            marginTop: 24,
-            paddingTop: 20,
-          }}
-        >
-          <button
-            type="button"
-            onClick={onEditPress}
-            style={{
-              width: "100%",
-              border: "none",
-              borderRadius: 8,
-              backgroundColor: "#111827",
-              color: "white",
-              cursor: "pointer",
-              fontSize: 16,
-              fontWeight: 700,
-              padding: "14px 16px",
-            }}
-          >
-            Edit location
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowDeleteWarning(true)}
-            style={{
-              width: "100%",
-              border: "1px solid #dc2626",
-              borderRadius: 8,
-              backgroundColor: "white",
-              color: "#dc2626",
-              cursor: "pointer",
-              fontSize: 16,
-              fontWeight: 700,
-              marginTop: 10,
-              padding: "14px 16px",
-            }}
-          >
-            Delete location
-          </button>
-        </div>
-      )}
-
-      {showDeleteWarning && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="delete-location-title"
-          style={{
-            position: "fixed",
-            inset: 0,
-            backgroundColor: "rgba(17,24,39,0.45)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 20,
-            zIndex: 10001,
-          }}
-        >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 360,
-              borderRadius: 12,
-              backgroundColor: "white",
-              boxShadow: "0 18px 45px rgba(0,0,0,0.24)",
-              padding: 22,
-            }}
-          >
-            <h3
-              id="delete-location-title"
-              style={{
-                margin: 0,
-                color: "#111827",
-                fontSize: 20,
-                fontWeight: 800,
-              }}
-            >
-              Delete location?
-            </h3>
-            <p
-              style={{
-                color: "#4b5563",
-                fontSize: 15,
-                lineHeight: 1.5,
-                marginBottom: 20,
-                marginTop: 10,
-              }}
-            >
-              This action is not reversible. The location and its details would
-              be permanently removed.
-            </p>
-            {deleteError && (
-              <p
-                style={{
-                  color: "#dc2626",
-                  fontSize: 14,
-                  fontWeight: 700,
-                  marginBottom: 14,
-                  marginTop: -6,
-                }}
-              >
-                {deleteError}
-              </p>
-            )}
-            <button
-              type="button"
-              onClick={() => setShowDeleteWarning(false)}
-              disabled={isDeletingLocation}
-              style={{
-                width: "100%",
-                border: "none",
-                borderRadius: 8,
-                backgroundColor: "#111827",
-                color: "white",
-                cursor: "pointer",
-                fontSize: 15,
-                fontWeight: 700,
-                opacity: isDeletingLocation ? 0.65 : 1,
-                padding: "12px 14px",
-              }}
-            >
-              Keep location
-            </button>
-            <button
-              type="button"
-              onClick={onDeleteConfirm}
-              disabled={isDeletingLocation}
-              style={{
-                width: "100%",
-                border: "none",
-                backgroundColor: "transparent",
-                color: "#dc2626",
-                cursor: "pointer",
-                fontSize: 15,
-                fontWeight: 700,
-                marginTop: 10,
-                opacity: isDeletingLocation ? 0.65 : 1,
-                padding: "12px 14px",
-              }}
-            >
-              {isDeletingLocation ? "Deleting..." : "Delete location"}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
